@@ -13,6 +13,7 @@ public:
     Fixed(int i);
     Fixed(float f);
 
+    Fixed operator-() const ;
     Fixed operator+(const Fixed& fixed) const ;
     Fixed operator-(const Fixed& fixed) const ;
     Fixed operator*(const Fixed& fixed) const ;
@@ -26,6 +27,7 @@ public:
     bool operator>=(const Fixed& fixed) const ;
 
     int floor() const ;
+    Fixed abs() const ;
 
     friend std::ostream& operator<<(std::ostream& stream, const Fixed& fixed);
 };

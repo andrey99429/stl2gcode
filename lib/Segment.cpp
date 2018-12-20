@@ -45,7 +45,7 @@ bool Segment::contain(const Vertex& v) const {
     if (res && slope.z != 0) {
         res &= v.z == v1.z + t * slope.z;
     }
-    cout << res << endl;
+
     return res;
 }
 
@@ -54,6 +54,6 @@ bool Segment::operator==(const Segment &s) const {
 }
 
 ostream& operator<<(ostream &stream, const Segment& segment) {
-    stream << segment.v1 << endl << segment.v2;
+    stream << segment.v1 << " " << segment.v2;
     return stream;
 }

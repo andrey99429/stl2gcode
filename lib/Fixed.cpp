@@ -16,9 +16,12 @@ Fixed::Fixed(int i) {
 }
 
 Fixed::Fixed(float f) {
-    fraction = static_cast<int64_t>(f * exponent);
+    fraction = static_cast<int64_t>(f * exponent) + (static_cast<int64_t>(10 * f * exponent) % 10 >= 5 ? 1 : 0);
 }
 
+Fixed Fixed::operator-() const {
+    return {-fraction};
+}
 
 Fixed Fixed::operator+(const Fixed& fixed) const {
     return {fraction + fixed.fraction};
@@ -33,7 +36,7 @@ Fixed Fixed::operator*(const Fixed& fixed) const {
 }
 
 Fixed Fixed::operator/(const Fixed& fixed) const {
-    return {fraction * exponent / fixed.fraction};
+    return {(fraction * exponent / fixed.fraction) + ((10 * fraction * exponent / fixed.fraction) % 10 >= 5 ? 1 : 0)};
 }
 
 
@@ -65,8 +68,16 @@ int Fixed::floor() const {
     return static_cast<int>(fraction / exponent);
 }
 
+Fixed Fixed::abs() const {
+    if (*this >= 0) {
+        return *this;
+    } else {
+        return -*this;
+    }
+}
+
+
 ostream& operator<<(ostream& stream, const Fixed& fixed) {
-    stream.precision(4);
-    stream << (float) fixed.fraction / Fixed::exponent;
+    stream << fixed.fraction / Fixed::exponent << "." << fixed.fraction % Fixed::exponent;
     return stream;
 }

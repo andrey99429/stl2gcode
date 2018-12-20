@@ -1,5 +1,7 @@
 #include "Vertex.h"
 
+using namespace std;
+
 Vertex::Vertex(Fixed x, Fixed y, Fixed z) : x(x), y(y), z(z) {}
 
 bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
@@ -28,7 +30,12 @@ bool Vertex::operator<(const Vertex& v) const {
     return (this->x * this->x + this->y * this->y + this->z * this->z) < (v.x * v.x + v.y + v.y + v.z + v.z);
 }
 
-std::ostream& operator << (std::ostream& stream, const Vertex& v) {
+Fixed Vertex::distance(const Vertex &v) const {
+    auto d = *this - v;
+    return d.x.abs() + d.y.abs() + d.z.abs();
+}
+
+ostream& operator << (ostream& stream, const Vertex& v) {
     stream << v.x << " " << v.y << " " << v.z;
     return stream;
 }

@@ -18,7 +18,9 @@ public:
     bool operator==(const Vertex& v) const ;
     bool operator!=(const Vertex& v) const ;
 
-    bool operator<(const Vertex& v) const;
+    bool operator<(const Vertex& v) const ;
+
+    Fixed distance(const Vertex& v) const ;
 
     friend std::ostream& operator << (std::ostream& stream, const Vertex& v);
 };

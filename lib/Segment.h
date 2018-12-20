@@ -13,7 +13,6 @@ public:
 
     Vertex intersect(const Fixed& z) const ;
     bool contain(const Vertex& v) const ;
-
     bool operator==(const Segment& s) const ;
 
     friend std::ostream& operator<<(std::ostream& stream, const Segment& segment);

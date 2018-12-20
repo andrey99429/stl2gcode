@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 import plotly.plotly as py
 import plotly.offline.offline as py_off
 import plotly.graph_objs as go
@@ -111,10 +112,11 @@ def svg(segments, contoures):
         if curr_z != contoures[i][2] or i == 0:
             code = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" version="1.1" viewBox="-150 -150 300 300">\n'
             curr_z = contoures[i][2]
+        color = "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         for j in range(0, len(contoures[i])-3, 3):
-            code += '<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="blue" stroke-width="1"/>'.format(contoures[i][j], contoures[i][j+1], contoures[i][j+3], contoures[i][j+4])
-            code += '<circle cx="{}" cy="{}" r="1" fill="orange" stroke="black" stroke-width="0.25"/>'.format(contoures[i][j], contoures[i][j+1])
-            code += '<circle cx="{}" cy="{}" r="1" fill="orange" stroke="black" stroke-width="0.25"/>\n'.format(contoures[i][j+3], contoures[i][j+4])
+            code += '<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="1"/>'.format(contoures[i][j], contoures[i][j+1], contoures[i][j+3], contoures[i][j+4], color)
+            #code += '<circle cx="{}" cy="{}" r="1" fill="orange" stroke="black" stroke-width="0.25"/>'.format(contoures[i][j], contoures[i][j+1])
+            #code += '<circle cx="{}" cy="{}" r="1" fill="orange" stroke="black" stroke-width="0.25"/>\n'.format(contoures[i][j+3], contoures[i][j+4])
         i += 1
     merger.write(root+'/files/model_cont.pdf')
     os.system('open '+root+'/files/model_cont.pdf')

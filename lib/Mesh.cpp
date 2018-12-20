@@ -22,14 +22,8 @@ float str2float(const string& str) {
 
 std::vector<Contour> contour_construction(const std::vector<Segment>& _segments) {
     vector<Segment> segments(_segments.begin(), _segments.end());
-
-
-
-    /*out << endl;
-    for (auto& segment : segments) {
-        cout << segment << endl;
-    }*/
     vector<Contour> contours;
+
     while (!segments.empty()) {
         Vertex v1 = segments.begin()->v1;
         Vertex v2 = segments.begin()->v2;
@@ -39,32 +33,40 @@ std::vector<Contour> contour_construction(const std::vector<Segment>& _segments)
         contour.push_back(v1);
         contour.push_back(v2);
 
-        while (contour.back() != contour.front() && !segments.empty()) { // выходить из цикла когда segment == segments.end()
-            auto last = contour.back();
-            auto segment = find_if(segments.begin(), segments.end(), [last] (const Segment& s) -> bool {
-                return s.v1 == last || s.v2 == last;
+        while (contour.back() != contour.front() && !segments.empty()) {
+            auto& last = contour.back();
+            //cout << last << endl;
+            auto segment = min_element(segments.begin(), segments.end(), [&last] (const Segment& s1, const Segment& s2) -> bool {
+                return min(last.distance(s1.v1), last.distance(s1.v2)) < min(last.distance(s2.v1), last.distance(s2.v2));
             });
-            if (segment != segments.end()) {
-                if (segment->v1 == contour.back()) {
+            //cout << *segment << endl;
+            if (segment != segments.end() && min(last.distance(segment->v1), last.distance(segment->v2)) < Fixed((int64_t)10)) {
+                if (last.distance(segment->v1) < last.distance(segment->v2)) {
                     contour.push_back(segment->v2);
                 } else {
                     contour.push_back(segment->v1);
                 }
                 segments.erase(segment);
             } else {
+                //cout << min(last.distance(segment->v1), last.distance(segment->v2)) << endl;
                 break;
             }
         }
         // проверить точки на нахождение на одной прямой
-        for (int i = 1; i < contour.size() - 1; ++i) {
+        /*for (int i = 1; i < contour.size() - 1; ++i) {
             Segment segment(contour[i - 1], contour[i + 1]);
             if (segment.contain(contour[i])) {
                 contour.erase(contour.begin() + i);
                 --i;
             }
-        }
+        }*/
         contours.push_back(contour);
     }
+
+    /*cout << endl;
+    for (auto& contour : contours) {
+        cout << contour << endl;
+    }*/
 
     return contours;
 }
@@ -189,9 +191,9 @@ void Mesh::debug_file() {
     }
     out << ";" << endl;
 
-    for (auto& segment : segments) {
-        for (auto& s : segment.second)
-            out << s.v1 << " " << s.v2 << endl;
+    for (auto& vector : segments) {
+        for (auto& segment : vector.second)
+            out << segment << endl;
     }
     out << ";" << endl;
 
@@ -240,7 +242,8 @@ void Mesh::slicing() {
         if (levels.count(i) == 1) {
             a.insert(a.end(), levels[i].begin(), levels[i].end());
         }
-        remove_if(a.begin(), a.end(), [plane_z] (Triangle t) -> bool { return t.z_max() < plane_z; });
+        auto last = remove_if(a.begin(), a.end(), [plane_z] (Triangle t) -> bool { return t.z_max() < plane_z; });
+        a.erase(last, a.end());
         for (auto &t : a) {
             if (t.belong_to_plane(plane_z)) {
                 planes[i].push_back(t);
