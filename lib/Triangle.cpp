@@ -22,16 +22,6 @@ bool Triangle::belong_to_plane(Fixed z) const {
 }
 
 std::vector<Vertex> Triangle::intersect(Fixed z) const {
-    /*cout << "{(" << v1.x << " " << v1.y << " " << v1.z << "), ";
-    cout << "(" << v2.x << " " << v2.y << " " << v2.z << "), ";
-    cout << "(" << v3.x << " " << v3.y << " " << v3.z << ")} ";
-    cout << "⋂ {" << z << "} = ";
-    string type;
-    type.append(v1.z == z ? "0" : v1.z > z ? "1" : "-1"); type.append(" ");
-    type.append(v2.z == z ? "0" : v2.z > z ? "1" : "-1"); type.append(" ");
-    type.append(v3.z == z ? "0" : v3.z > z ? "1" : "-1"); type.append(" ");
-    type.append((v1.z == v2.z && v1.z == v3.z && v2.z == v3.z) ? "1" : "0");*/
-
     Segment l1(v1, v2), l2(v2, v3), l3(v3, v1);
     Vertex p1 = l1.intersect(z);
     Vertex p2 = l2.intersect(z);
@@ -44,14 +34,6 @@ std::vector<Vertex> Triangle::intersect(Fixed z) const {
         res.push_back(p2);
     if (p3.between(v3, v1) && find(res.begin(), res.end(), p3) == res.end())
         res.push_back(p3);
-
-    /*cout << "{";
-    for (auto& v:res) {
-        cout << "(" << v.x << " " << v.y << " " << v.z << ")";
-        if (!(v == *(res.end()-1))) cout << " ";
-    }
-    cout << "} (" << res.size() << ") ";
-    cout << " (" << type << ")" << endl;*/
 
     return res;
 }

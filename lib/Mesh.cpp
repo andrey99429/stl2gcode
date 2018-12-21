@@ -21,52 +21,46 @@ float str2float(const string& str) {
 }
 
 std::vector<Contour> contour_construction(const std::vector<Segment>& _segments) {
+    const Fixed near_point(5ll), near_distance(0.3f);
     vector<Segment> segments(_segments.begin(), _segments.end());
     vector<Contour> contours;
 
     while (!segments.empty()) {
-        Vertex v1 = segments.begin()->v1;
-        Vertex v2 = segments.begin()->v2;
+        Vertex v1 = segments.begin()->v0;
+        Vertex v2 = segments.begin()->v1;
         segments.erase(segments.begin());
 
         Contour contour;
         contour.push_back(v1);
         contour.push_back(v2);
 
-        while (contour.back() != contour.front() && !segments.empty()) {
+        while (contour.back().distance(contour.front()) > near_point && !segments.empty()) {
             auto& last = contour.back();
             //cout << last << endl;
             auto segment = min_element(segments.begin(), segments.end(), [&last] (const Segment& s1, const Segment& s2) -> bool {
-                return min(last.distance(s1.v1), last.distance(s1.v2)) < min(last.distance(s2.v1), last.distance(s2.v2));
+                return min(last.distance(s1.v0), last.distance(s1.v1)) < min(last.distance(s2.v0), last.distance(s2.v1));
             });
             //cout << *segment << endl;
-            if (segment != segments.end() && min(last.distance(segment->v1), last.distance(segment->v2)) < Fixed((int64_t)10)) {
-                if (last.distance(segment->v1) < last.distance(segment->v2)) {
-                    contour.push_back(segment->v2);
-                } else {
+            if (segment != segments.end() && min(last.distance(segment->v0), last.distance(segment->v1)) <= near_point) {
+                if (last.distance(segment->v0) < last.distance(segment->v1)) {
                     contour.push_back(segment->v1);
+                } else {
+                    contour.push_back(segment->v0);
                 }
                 segments.erase(segment);
             } else {
-                //cout << min(last.distance(segment->v1), last.distance(segment->v2)) << endl;
                 break;
             }
         }
         // проверить точки на нахождение на одной прямой
-        /*for (int i = 1; i < contour.size() - 1; ++i) {
-            Segment segment(contour[i - 1], contour[i + 1]);
-            if (segment.contain(contour[i])) {
+        for (int i = 1; i < contour.size() - 1; ++i) {
+            if (contour[i - 1] != contour[i + 1] && Segment(contour[i - 1], contour[i + 1]).distance(contour[i]) <= near_distance) {
                 contour.erase(contour.begin() + i);
                 --i;
             }
-        }*/
+        }
         contours.push_back(contour);
     }
-
-    /*cout << endl;
-    for (auto& contour : contours) {
-        cout << contour << endl;
-    }*/
 
     return contours;
 }
@@ -185,18 +179,6 @@ bool Mesh::is_ascii() {
 
 void Mesh::debug_file() {
     ofstream out("../files/model.txt");
-    for (auto& triangle: triangles) {
-        out.precision(4);
-        out << triangle << endl;
-    }
-    out << ";" << endl;
-
-    for (auto& vector : segments) {
-        for (auto& segment : vector.second)
-            out << segment << endl;
-    }
-    out << ";" << endl;
-
     for (auto& vector : contours) {
         for (auto& contour : vector.second) {
             out << contour << endl;

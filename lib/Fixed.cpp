@@ -1,4 +1,5 @@
 #include "Fixed.h"
+#include <cmath>
 using namespace std;
 
 const int16_t Fixed::exponent = 10000;
@@ -76,8 +77,18 @@ Fixed Fixed::abs() const {
     }
 }
 
+Fixed Fixed::square() const {
+    return *this * *this;
+}
+
+Fixed Fixed::sqrt() const {
+    return Fixed(::sqrt((float) fraction / exponent));
+}
 
 ostream& operator<<(ostream& stream, const Fixed& fixed) {
-    stream << fixed.fraction / Fixed::exponent << "." << fixed.fraction % Fixed::exponent;
+    stream << fixed.fraction / Fixed::exponent << ".";
+    stream.width(4);
+    stream.fill('0');
+    stream << fixed.fraction % Fixed::exponent;
     return stream;
 }

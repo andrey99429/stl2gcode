@@ -6,13 +6,13 @@
 
 class Segment {
 public:
+    Vertex v0;
     Vertex v1;
-    Vertex v2;
 
-    explicit Segment(Vertex v1 = Vertex(), Vertex v2 = Vertex());
+    explicit Segment(Vertex v0 = Vertex(), Vertex v1 = Vertex());
 
     Vertex intersect(const Fixed& z) const ;
-    bool contain(const Vertex& v) const ;
+    Fixed distance(const Vertex& v3) const ;
     bool operator==(const Segment& s) const ;
 
     friend std::ostream& operator<<(std::ostream& stream, const Segment& segment);

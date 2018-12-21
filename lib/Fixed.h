@@ -28,9 +28,10 @@ public:
 
     int floor() const ;
     Fixed abs() const ;
+    Fixed square() const ;
+    Fixed sqrt() const ;
 
     friend std::ostream& operator<<(std::ostream& stream, const Fixed& fixed);
 };
-
 
 #endif //STL2GCODE_FIXED_H
