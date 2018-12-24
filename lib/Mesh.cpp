@@ -52,7 +52,11 @@ std::vector<Contour> contour_construction(const std::vector<Segment>& _segments)
                 break;
             }
         }
+        if (contour.back() != contour.front() && contour.back().distance(contour.front()) <= near_point) {
+            contour.back() = contour.front();
+        }
         // проверить точки на нахождение на одной прямой
+        // проверить является первый или последний лишним
         for (int i = 1; i < contour.size() - 1; ++i) {
             if (contour[i - 1] != contour[i + 1] && Segment(contour[i - 1], contour[i + 1]).distance(contour[i]) <= near_distance) {
                 contour.erase(contour.begin() + i);
@@ -224,7 +228,9 @@ void Mesh::slicing() {
         if (levels.count(i) == 1) {
             a.insert(a.end(), levels[i].begin(), levels[i].end());
         }
-        auto last = remove_if(a.begin(), a.end(), [plane_z] (Triangle t) -> bool { return t.z_max() < plane_z; });
+        auto last = remove_if(a.begin(), a.end(), [&plane_z] (const Triangle& t) -> bool {
+            return t.z_max() < plane_z;
+        });
         a.erase(last, a.end());
         for (auto &t : a) {
             if (t.belong_to_plane(plane_z)) {
@@ -233,7 +239,12 @@ void Mesh::slicing() {
                 auto seg = t.intersect(plane_z);
                 if (seg.size() == 2) {
                     Segment segment(seg[0], seg[1]);
-                    segments[i].push_back(segment);
+                    auto repet = find_if(segments[i].begin(), segments[i].end(), [&segment] (const Segment& s) -> bool {
+                        return (s.v0 == segment.v0 && s.v1 == segment.v1) || (s.v0 == segment.v1 && s.v1 == segment.v0);
+                    });
+                    if (repet == segments[i].end()) {
+                        segments[i].push_back(segment);
+                    }
                 }
             }
         }

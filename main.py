@@ -7,14 +7,14 @@ from PyPDF2 import PdfFileMerger
 root = os.path.dirname(os.path.abspath(__file__))
 
 
-def svg(contoures):
+def svg(contours):
     global root
     merger = PdfFileMerger()
     i = 0
     code = ''
-    curr_z = contoures[0][2]
-    while i < len(contoures):
-        if curr_z != contoures[i][2] or i == len(contoures) - 1:
+    curr_z = contours[0][2]
+    while i < len(contours):
+        if curr_z != contours[i][2] or i == len(contours) - 1:
             code += '<text x = "-149.5" y="-141" font-size="12" font-weight="bold" font-family="Avenir, Helvetica, sans-serif">z={}</text>'.format(curr_z)
             code += '</svg>'
             path = root+'/files/'+str(curr_z)
@@ -26,16 +26,19 @@ def svg(contoures):
             merger.append(path+'.pdf')
             os.remove(path+'.svg')
             os.remove(path+'.pdf')
-        if curr_z != contoures[i][2] or i == 0:
+
+        if curr_z != contours[i][2] or i == 0:
             code = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" version="1.1" viewBox="-150 -150 300 300">\n'
-            curr_z = contoures[i][2]
-        color = "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        for j in range(0, len(contoures[i])-3, 3):
-            code += '<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="0.5"/>'.format(contoures[i][j], contoures[i][j+1], contoures[i][j+3], contoures[i][j+4], color)
-            code += '<circle cx="{}" cy="{}" r="0.25" fill="{}" stroke="black" stroke-width="0.2"/>'.format(contoures[i][j], contoures[i][j+1], color)
-            code += '<circle cx="{}" cy="{}" r="0.25" fill="{}"  stroke="black" stroke-width="0.2"/>\n'.format(contoures[i][j+3], contoures[i][j+4], color)
-            code += '<text x="{}" y="{}" text-anchor="middle" font-size="1px">{} {}</text>'.format(contoures[i][j], contoures[i][j+1], contoures[i][j], contoures[i][j+1])
-            code += '<text x="{}" y="{}" text-anchor="middle" font-size="1px">{} {}</text>'.format(contoures[i][j+3], contoures[i][j+4], contoures[i][j+3], contoures[i][j+4])
+            curr_z = contours[i][2]
+
+        color = '#{:02x}{:02x}{:02x}'.format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        contour = contours[i]
+        del contour[2::3]
+        contour = [(contour[j], contour[j+1]) for j in range(0, len(contour), 2)]
+        code += '<polyline points="{}" stroke="{}" stroke-width="1" fill="none"/>\n'.format(' '.join([str(contour[j][0])+','+str(contour[j][1]) for j in range(len(contour))]), color)
+        for point in contour:
+            code += '<circle cx="{}" cy="{}" r="0.6" fill="{}" stroke="black" stroke-width="0.2"/>'.format(point[0], point[1], color)
+            code += '<text x="{}" y="{}" text-anchor="middle" font-size="2px">{}</text>\n'.format(point[0], point[1]-0.7, str(point[0])+' '+str(point[1]))
         i += 1
     merger.write(root+'/files/model.pdf')
     os.system('open '+root+'/files/model.pdf')
