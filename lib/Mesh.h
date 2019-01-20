@@ -12,6 +12,8 @@ using namespace std;
 typedef vector<Vertex> Contour;
 
 class Mesh {
+    static const Fixed near_point, near_distance;
+
     string file;
     vector<Triangle> triangles;
     map<int, vector<Segment>> segments;
@@ -26,17 +28,19 @@ public:
     void debug_file();
 
     void slicing();
+
+    vector<Contour> contour_construction(const vector<Segment>& segments);
+    vector<Contour> plane_construction(const vector<Triangle> & triangles);
+
 };
 
 float str2float(const string& str);
 
-vector<Contour> contour_construction(const vector<Segment>& segments);
-
 // slicing() vector<Triangle> -> map<int, vector<Segment>>, map<int, vector<Triangle>>
 // contour_construction() vector<Segment> -> Contour (vector<Vertex>) // all belong to one z
-// plane_construction() Contour -> ? (Contour/vector<Contour>) // all belong to one z
+// plane_construction() vector<Triangle> -> ? (vector<Contour>) // all belong to one z
 // supports_construction() vector<Contour> -> vector<Contour> // all belong to one z
 
-ostream& operator<<(ostream& stream, const Contour& countour);
+ostream& operator<<(ostream& stream, const Contour& contour);
 
 #endif

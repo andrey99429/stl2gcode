@@ -20,6 +20,10 @@ Fixed::Fixed(float f) {
     fraction = static_cast<int64_t>(f * exponent) + (static_cast<int64_t>(10 * f * exponent) % 10 >= 5 ? 1 : 0);
 }
 
+Fixed::Fixed(double d) {
+    fraction = static_cast<int64_t>(d * exponent) + (static_cast<int64_t>(10 * d * exponent) % 10 >= 5 ? 1 : 0);
+}
+
 Fixed Fixed::operator-() const {
     return {-fraction};
 }
@@ -86,9 +90,12 @@ Fixed Fixed::sqrt() const {
 }
 
 ostream& operator<<(ostream& stream, const Fixed& fixed) {
-    stream << fixed.fraction / Fixed::exponent << ".";
+    stream << (fixed.fraction < 0 ? "-" : "");
+    stream << (fixed.fraction / Fixed::exponent >= 0 ? fixed.fraction / Fixed::exponent : - fixed.fraction / Fixed::exponent);
+    stream << ".";
     stream.width(4);
     stream.fill('0');
-    stream << fixed.fraction % Fixed::exponent;
+    auto fraction = fixed.fraction % Fixed::exponent;
+    stream << (fraction >= 0 ? fraction : -fraction);
     return stream;
 }

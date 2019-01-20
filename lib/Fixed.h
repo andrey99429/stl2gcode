@@ -12,6 +12,7 @@ public:
     Fixed(const int64_t& fraction);
     Fixed(int i);
     Fixed(float f);
+    Fixed(double d);
 
     Fixed operator-() const ;
     Fixed operator+(const Fixed& fixed) const ;
