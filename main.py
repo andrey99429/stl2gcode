@@ -14,13 +14,19 @@ def svg(contours):
     for i in range(len(contours)):
         curr_z = contours[i][2]
         color = '#{:02x}{:02x}{:02x}'.format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        width = 1
         contour = contours[i]
         del contour[2::3]
         contour = [(contour[j], contour[j+1]) for j in range(0, len(contour), 2)]
-        code = '<polyline points="{}" stroke="{}" stroke-width="1" fill="none"/>\n'.format(' '.join([str(contour[j][0])+','+str(contour[j][1]) for j in range(len(contour))]), color)
+        code = ''
+        if len(contour) == 2:
+            width = 0.25
+            color = '#b3b3b3'
+        code += '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(contour[j][0])+','+str(contour[j][1]) for j in range(len(contour))]), color, width)
         for point in contour:
-            code += '<circle cx="{}" cy="{}" r="1" fill="orange" stroke="black" stroke-width="0.25"/>'.format(point[0], point[1])
+            code += '<circle cx="{}" cy="{}" r="{}" fill="orange" stroke="black" stroke-width="0.25"/>'.format(point[0], point[1], width)
             #code += '<text x="{}" y="{}" text-anchor="middle" font-size="3px">{}</text>\n'.format(point[0], point[1]-1.25, str(point[0])+' '+str(point[1]))
+        code += '\n'
         if curr_z not in svgs:
             svgs[curr_z] = ''
         svgs[curr_z] += code
@@ -38,7 +44,7 @@ def svg(contours):
         dwg = svg2rlg(path+'.svg')
         renderPDF.drawToFile(dwg, path+'.pdf')
         merger.append(path+'.pdf')
-        os.remove(path+'.svg')
+        #os.remove(path+'.svg')
         os.remove(path+'.pdf')
 
     merger.write(root+'/files/model.pdf')

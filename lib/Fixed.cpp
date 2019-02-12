@@ -44,6 +44,10 @@ Fixed Fixed::operator/(const Fixed& fixed) const {
     return {(fraction * exponent / fixed.fraction) + ((10 * fraction * exponent / fixed.fraction) % 10 >= 5 ? 1 : 0)};
 }
 
+Fixed &Fixed::operator+=(const Fixed &fixed) {
+    *this = *this + fixed;
+    return *this;
+}
 
 bool Fixed::operator==(const Fixed& fixed) const {
     return fraction == fixed.fraction;
