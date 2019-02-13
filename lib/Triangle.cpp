@@ -23,9 +23,9 @@ bool Triangle::belong_to_plane(Fixed z) const {
 
 std::vector<Vertex> Triangle::intersect(Fixed z) const {
     Segment l1(v1, v2), l2(v2, v3), l3(v3, v1);
-    Vertex p1 = l1.intersect(z);
-    Vertex p2 = l2.intersect(z);
-    Vertex p3 = l3.intersect(z);
+    Vertex p1 = l1.intersect_with_plane(z);
+    Vertex p2 = l2.intersect_with_plane(z);
+    Vertex p3 = l3.intersect_with_plane(z);
 
     vector<Vertex> res;
     if (p1.between(v1, v2))

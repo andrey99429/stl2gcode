@@ -1,8 +1,9 @@
 #ifndef STL2GCODE_SEGMENT_H
 #define STL2GCODE_SEGMENT_H
 
-#include "Vertex.h"
 #include <ostream>
+
+#include "Vertex.h"
 
 class Segment {
 public:
@@ -11,8 +12,9 @@ public:
 
     explicit Segment(Vertex v0 = Vertex(), Vertex v1 = Vertex());
 
-    Vertex intersect(const Fixed& z) const ;
+    Vertex intersect_with_plane(const Fixed &z) const ;
     Fixed distance(const Vertex& v3) const ;
+    bool intersect_with_segment(const Segment &s2, Vertex &intersection) const ;
     bool operator==(const Segment& s) const ;
 
     friend std::ostream& operator<<(std::ostream& stream, const Segment& segment);
