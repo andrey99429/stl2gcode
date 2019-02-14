@@ -210,6 +210,10 @@ void Mesh::slicing() {
         shells[i].insert(shells[i].end(), contours.begin(), contours.end());
     }
 
+    for (auto& contour : shells[63]) {
+        cout << contour << endl;
+    }
+
     for (int i = 0; i < shells.size(); ++i) {
         auto segments = filling(shells[i]);
         infill[i].insert(infill[i].end(), segments.begin(), segments.end());
@@ -286,6 +290,7 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
     Fixed x_max = contours.front().front().x;
     Fixed y_min = contours.front().front().y;
     Fixed y_max = contours.front().front().y;
+    Fixed z = contours.front().front().z;
 
     for (auto& contour: contours) {
         for (auto& vertex: contour) {
@@ -303,13 +308,12 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
     }
 
     vector<Segment> fillings;
-    Fixed dx(0.5f);
+    Fixed dx(1.0f);
 
-    // TODO: улучшить алгоритм (запоминание предыдущего отрезка пересечения)
     for (Fixed x = x_min; x <= x_max; x += dx) {
-        vector <Vertex> intersections;
+        vector<Vertex> intersections;
+        Segment l(Vertex(x, y_min, z), Vertex(x, y_max, z));
         for (auto& contour: contours) {
-            Segment l(Vertex(x, y_min, contour[0].z), Vertex(x, y_max, contour[0].z));
             for (int i = 0; i < contour.size() - 1; ++i) {
                 Vertex intersection;
                 if (l.intersect_with_segment(Segment(contour[i], contour[i + 1]), intersection)) {
@@ -322,44 +326,18 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
         sort(intersections.begin(), intersections.end(), [] (const Vertex& v1, const Vertex& v2) -> bool {
             return v1.y < v2.y;
         });
-        intersections.erase(unique(intersections.begin(), intersections.end()), intersections.end());
+        //intersections.erase(unique(intersections.begin(), intersections.end()), intersections.end());
 
         // соединение точек в отрезки
         if (intersections.size() > 1) {
             for (int i = 0; i < intersections.size() - 1; i += 2) {
-                fillings.emplace_back(intersections[i], intersections[i + 1]);
+                if (intersections[i] != intersections[i + 1]) {
+                    fillings.emplace_back(intersections[i], intersections[i + 1]);
+                }
             }
         }
     }
 
-    /*int si1 = 0; // индекс начала первого отрезка имеющего пересечение в прошлый раз
-    int si2 = 0;
-    for (Fixed x = x_min; x <= x_max; x += dx) {
-        Segment l(Vertex(x, y_min, contour1[0].z), Vertex(x, y_max, contour1[0].z));
-        Vertex v1, v2;
-
-        while (!intersect_lines(l, Segment(contour1[si1], contour1[si1 + 1]), v1)) {
-            si1 += 1;
-            if (si1 == contour1.size() - 1) {
-                si1 = 0;
-            }
-        }
-
-        while (!intersect_lines(l, Segment(contour1[si2], contour1[si2 + 1]), v2) || si1 == si2) {
-            si2 += 1;
-            if (si2 == contour1.size() - 1) {
-                si2 = 0;
-            }
-        }
-
-        // чтобы не получалось вырожденного отрезка
-        if (v1 != v2) {
-            Contour c;
-            c.push_back(v1);
-            c.push_back(v2);
-            fillings.push_back(c);
-        }
-    }*/
     return fillings;
 }
 
