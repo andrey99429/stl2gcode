@@ -55,8 +55,8 @@ bool Segment::intersect_with_segment(const Segment &s2, Vertex &intersection) co
         intersection.y = Dy / D;
         intersection.z = s1.v0.z;
 
-        // как-то решить проблему v1.x == v2.x 83.6400 а intersection 83.6401
-        return intersection.between(s1.v0, s1.v1) && intersection.between(s2.v0, s2.v1);
+        bool intersected = intersection.between_with_e(s1.v0, s1.v1) && intersection.between_with_e(s2.v0, s2.v1);
+        return intersected;
     }
 
 }

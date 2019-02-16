@@ -11,6 +11,10 @@ public:
 
     explicit Triangle(Vertex v1 = Vertex(), Vertex v2 = Vertex(), Vertex v3 = Vertex());
 
+    Fixed x_min() const ;
+    Fixed x_max() const ;
+    Fixed y_min() const ;
+    Fixed y_max() const ;
     Fixed z_min() const ;
     Fixed z_max() const ;
 

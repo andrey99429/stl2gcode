@@ -11,9 +11,12 @@ public:
     Fixed z;
     explicit Vertex(Fixed x = 0, Fixed y = 0, Fixed z = 0);
     bool between(const Vertex& v1, const Vertex& v2) const ;
+    bool between_with_e(const Vertex &v1, const Vertex &v2) const ;
 
     Vertex operator+(const Vertex& v) const ;
     Vertex operator-(const Vertex& v) const ;
+
+    Vertex& operator+=(const Vertex& v);
 
     bool operator==(const Vertex& v) const ;
     bool operator!=(const Vertex& v) const ;

@@ -10,12 +10,24 @@ bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
             && (((v1.z <= this->z) && (this->z <= v2.z)) || ((v2.z <= this->z) && (this->z <= v1.z))));
 }
 
+bool Vertex::between_with_e(const Vertex &v1, const Vertex &v2) const {
+    Fixed e(1ll);
+    return ((((v1.x - e <= this->x) && (this->x <= v2.x + e)) || ((v2.x - e <= this->x) && (this->x <= v1.x + e)))
+            && (((v1.y - e <= this->y) && (this->y <= v2.y + e)) || ((v2.y - e <= this->y) && (this->y <= v1.y + e)))
+            && (((v1.z - e <= this->z) && (this->z <= v2.z + e)) || ((v2.z - e <= this->z) && (this->z <= v1.z + e))));
+}
+
 Vertex Vertex::operator+(const Vertex& v) const {
     return Vertex(this->x + v.x, this->y + v.y, this->z + v.z);
 }
 
 Vertex Vertex::operator-(const Vertex& v) const {
     return Vertex(this->x - v.x, this->y - v.y, this->z - v.z);
+}
+
+Vertex& Vertex::operator+=(const Vertex &v) {
+    *this = *this + v;
+    return *this;
 }
 
 bool Vertex::operator==(const Vertex& v) const  {

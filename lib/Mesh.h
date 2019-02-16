@@ -16,9 +16,6 @@ class Mesh {
     static const Fixed near_point, near_distance;
 
     string file;
-    //vector<Triangle> triangles;
-    //map<int, vector<Segment>> segments;
-    //map<int, vector<Contour>> contours;
 
     vector<Triangle> triangles;
     vector<vector<Segment>> segments;
@@ -34,7 +31,7 @@ public:
     bool is_ascii();
     void debug_file();
 
-    void slicing();
+    void slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz);
 
     void stl2gcode();
 

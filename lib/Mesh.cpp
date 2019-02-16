@@ -137,28 +137,63 @@ void Mesh::debug_file() {
 }
 
 void Mesh::stl2gcode() {
+    // stl2gcode(parameters)
+    cout << "triangles: " << triangles.size() << endl;
+    // опредееление габоритов модели
+    Fixed x_min = triangles.front().x_min();
+    Fixed x_max = triangles.front().x_max();
+    Fixed y_min = triangles.front().y_min();
+    Fixed y_max = triangles.front().y_max();
+    Fixed z_min = triangles.front().z_min();
+    Fixed z_max = triangles.front().z_max();
 
+    for (auto& triangle : triangles) {
+        if (x_min > triangle.x_min()) {
+            x_min = triangle.x_min();
+        }
+        if (x_max < triangle.x_max()) {
+            x_max = triangle.x_max();
+        }
+        if (y_min > triangle.y_min()) {
+            y_min = triangle.y_min();
+        }
+        if (y_max < triangle.y_max()) {
+            y_max = triangle.y_max();
+        }
+        if (z_min > triangle.z_min()) {
+            z_min = triangle.z_min();
+        }
+        if (z_max < triangle.z_max()) {
+            z_max = triangle.z_max();
+        }
+    }
+
+    cout << "x_min: " << x_min << " x_max: " << x_max << endl;
+    cout << "y_min: " << y_min << " y_max: " << y_max << endl;
+    cout << "z_min: " << z_min << " z_max: " << z_max << endl;
+
+    // сдвиг модели в центр
+    /*Vertex shift;
+    shift.x = -(x_max - x_min) / 2;
+    shift.y = -(y_max - y_min) / 2;
+    shift.z = -z_min;
+    for (auto& triangle: triangles) {
+        triangle.v1 += shift;
+        triangle.v2 += shift;
+        triangle.v3 += shift;
+    }*/
+
+    // слайсинг
+    Fixed dz(1.0f);
+    slicing(z_min, z_max, dz);
 }
 
-void Mesh::slicing() {
-    Fixed z_min = min_element(triangles.begin(), triangles.end(), [] (const Triangle& t1, const Triangle& t2) -> bool {
-        return t1.z_min() < t2.z_min();
-    })->z_min();
-    Fixed z_max = max_element(triangles.begin(), triangles.end(), [] (const Triangle& t1, const Triangle& t2) -> bool {
-        return t1.z_max() < t2.z_max();
-    })->z_max();
-
-    Fixed d(1); // param
-
-    int p_size = ((z_max - z_min) / d).floor();
-
-    cout << "z_min: " << z_min << " z_max: " << z_max << endl;
-    cout << "d: " << d << " p_size: " << p_size << endl;
-    cout << "triangles: " << triangles.size() << endl;
-
+void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
+    int p_size = ((z_max - z_min) / dz).floor() + 1;
+    cout << "dz: " << dz << " p_size: " << p_size << endl;
     // сортировка треугольников
     vector<vector<Triangle>> levels; // список из треугольников
-    levels.resize(p_size + 1);
+    levels.resize(p_size);
 
     for (auto &triangle : triangles) {
         int i = 0;
@@ -167,20 +202,18 @@ void Mesh::slicing() {
         } else if (triangle.z_min() > z_max) {
             i = p_size;
         } else {
-            i = ((triangle.z_min() - z_min) / d).floor();
+            i = ((triangle.z_min() - z_min) / dz).floor();
         }
         levels[i].push_back(triangle);
     }
 
     // построение сечений
     map<int, vector<Triangle>> planes;
-    segments.resize(p_size + 1);
+    segments.resize(p_size);
     vector<Triangle> a;
     for (int i = 0; i <= p_size; ++i) {
-        Fixed plane_z = z_min + d * i;
-        //if (levels.count(i) == 1) {
+        Fixed plane_z = z_min + dz * i;
         a.insert(a.end(), levels[i].begin(), levels[i].end());
-        //}
         auto last = remove_if(a.begin(), a.end(), [&plane_z](const Triangle &t) -> bool {
             return t.z_max() < plane_z;
         });
@@ -203,27 +236,17 @@ void Mesh::slicing() {
         }
     }
 
-    shells.resize(p_size + 1);
-    infill.resize(p_size + 1);
+    shells.resize(p_size);
+    infill.resize(p_size);
     for (int i = 0; i < segments.size(); ++i) {
         auto contours = contour_construction(segments[i]);
         shells[i].insert(shells[i].end(), contours.begin(), contours.end());
-    }
-
-    for (auto& contour : shells[63]) {
-        cout << contour << endl;
     }
 
     for (int i = 0; i < shells.size(); ++i) {
         auto segments = filling(shells[i]);
         infill[i].insert(infill[i].end(), segments.begin(), segments.end());
     }
-
-
-    /*for (auto &elem : segments) {
-        auto _countures = contour_construction(elem.second);
-        contours[elem.first].insert(contours[elem.first].begin(), _countures.begin(), _countures.end());
-    }*/
 
     /*for (auto &v : planes) {
         auto _plane = plane_construction(v.second);

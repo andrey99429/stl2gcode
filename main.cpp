@@ -5,7 +5,7 @@ using namespace std;
 
 int main() {
     Mesh mesh("../files/pyramid.stl");
-    mesh.slicing();
+    mesh.stl2gcode();
     mesh.debug_file();
 
     cout << "python" << endl;

@@ -9,6 +9,22 @@ using namespace std;
 
 Triangle::Triangle(Vertex v1, Vertex v2, Vertex v3) : v1(v1), v2(v2), v3(v3) {}
 
+Fixed Triangle::x_min() const {
+    return min(v1.x, min(v2.x, v3.x));
+}
+
+Fixed Triangle::x_max() const {
+    return max(v1.x, max(v2.x, v3.x));
+}
+
+Fixed Triangle::y_min() const {
+    return min(v1.y, min(v2.y, v3.y));
+}
+
+Fixed Triangle::y_max() const {
+    return max(v1.y, max(v2.y, v3.y));
+}
+
 Fixed Triangle::z_min() const {
     return min(v1.z, min(v2.z, v3.z));
 }
