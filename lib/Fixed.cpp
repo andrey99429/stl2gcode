@@ -73,6 +73,10 @@ bool Fixed::operator>=(const Fixed& fixed) const {
     return fraction >= fixed.fraction;
 }
 
+bool Fixed::is_integer() const {
+    return fraction % exponent == 0;
+}
+
 int Fixed::floor() const {
     return static_cast<int>(fraction / exponent);
 }

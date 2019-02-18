@@ -29,6 +29,7 @@ public:
     bool operator<=(const Fixed& fixed) const ;
     bool operator>=(const Fixed& fixed) const ;
 
+    bool is_integer() const ;
     int floor() const ;
     Fixed abs() const ;
     Fixed square() const ;

@@ -30,6 +30,8 @@ Fixed Triangle::z_min() const {
 }
 
 Fixed Triangle::z_max() const {
+    // static Fixed value = max(v1.z, max(v2.z, v3.z));
+    // return value;
     return max(v1.z, max(v2.z, v3.z));
 }
 

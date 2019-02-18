@@ -189,42 +189,43 @@ void Mesh::stl2gcode() {
 }
 
 void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
-    int p_size = ((z_max - z_min) / dz).floor() + 1;
+    unsigned int p_size = static_cast<unsigned int>(((z_max - z_min) / dz).floor() + 1);
     cout << "dz: " << dz << " p_size: " << p_size << endl;
+
     // сортировка треугольников
-    vector<vector<Triangle>> levels; // список из треугольников
+    vector<vector<Triangle>> levels; // список из треугольников по уровням
     levels.resize(p_size);
 
     for (auto &triangle : triangles) {
-        int i = 0;
-        if (triangle.z_min() < z_min) {
-            i = 0;
-        } else if (triangle.z_min() > z_max) {
-            i = p_size;
-        } else {
-            i = ((triangle.z_min() - z_min) / dz).floor();
+        if (triangle.z_min() <= z_min) {
+            levels[0].push_back(triangle);
         }
-        levels[i].push_back(triangle);
+        else if (triangle.z_min() > z_max) {
+            // nothing to do
+        } else {
+            Fixed i = ((triangle.z_min() - z_min) / dz);
+            levels[i.floor() + (i.is_integer() ? 0 : 1)].push_back(triangle);
+        }
     }
 
     // построение сечений
     map<int, vector<Triangle>> planes;
     segments.resize(p_size);
-    vector<Triangle> a;
-    for (int i = 0; i <= p_size; ++i) {
+    vector<Triangle> current;
+    for (int i = 0; i < p_size; ++i) {
         Fixed plane_z = z_min + dz * i;
-        a.insert(a.end(), levels[i].begin(), levels[i].end());
-        auto last = remove_if(a.begin(), a.end(), [&plane_z](const Triangle &t) -> bool {
+        auto last = remove_if(current.begin(), current.end(), [&plane_z](const Triangle &t) -> bool {
             return t.z_max() < plane_z;
         });
-        a.erase(last, a.end());
-        for (auto &t : a) {
+        current.erase(last, current.end());
+        current.insert(current.end(), levels[i].begin(), levels[i].end());
+        for (auto &t : current) {
             if (t.belong_to_plane(plane_z)) {
                 planes[i].push_back(t);
             } else {
-                auto seg = t.intersect(plane_z);
-                if (seg.size() == 2) {
-                    Segment segment(seg[0], seg[1]);
+                auto points = t.intersect(plane_z);
+                if (points.size() == 2) {
+                    Segment segment(points[0], points[1]);
                     auto repet = find_if(segments[i].begin(), segments[i].end(), [&segment](const Segment &s) -> bool {
                         return (s.v0 == segment.v0 && s.v1 == segment.v1) || (s.v0 == segment.v1 && s.v1 == segment.v0);
                     });
