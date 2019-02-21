@@ -331,16 +331,40 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
         }
     }
 
-    vector<Segment> fillings;
-    Fixed dx(1.0f);
+    Fixed dt(5);
+    vector<Segment> infill_lines;
 
-    for (Fixed x = x_min; x <= x_max; x += dx) {
+    for (Fixed y = y_min; y < y_max; y += dt) { // ↘ low
+        Fixed b = y - x_min;
+        Fixed x = y_max - b;
+        infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
+    }
+
+    for (Fixed x = x_min + dt; x < x_max; x += dt) { // ↘ up
+        Fixed b = y_min - x;
+        Fixed y = x_max + b;
+        infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
+    }
+
+    for (Fixed x = x_min; x < x_max; x += dt) { // ↗ low
+        Fixed b = y_max + x;
+        Fixed y = b - x_max;
+        infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
+    }
+
+    for (Fixed y = y_min + dt; y < y_max; y += dt) { // ↗ up
+        Fixed b = y + x_min;
+        Fixed x = b - y_min;
+        infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
+    }
+
+    vector<Segment> fillings;
+    for (auto& infill_line : infill_lines) {
         vector<Vertex> intersections;
-        Segment l(Vertex(x, y_min, z), Vertex(x, y_max, z));
         for (auto& contour: contours) {
             for (int i = 0; i < contour.size() - 1; ++i) {
                 Vertex intersection;
-                if (l.intersect_with_segment(Segment(contour[i], contour[i + 1]), intersection)) {
+                if (infill_line.intersect_with_segment(Segment(contour[i], contour[i + 1]), intersection)) {
                     intersections.push_back(intersection);
                 }
             }
