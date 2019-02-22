@@ -4,7 +4,11 @@
 using namespace std;
 
 int main() {
-    Mesh mesh("../files/pyramid.stl");
+    string path = "../models/";
+    vector<string> models = {"pyramid.stl",
+                            "tabouret.stl"};
+
+    Mesh mesh(path + models[1]);
     mesh.stl2gcode();
     mesh.debug_file();
 

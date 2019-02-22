@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <list>
 
 #include "Mesh.h"
 #include "extra.h"
@@ -47,14 +49,14 @@ void Mesh::stl_binary() {
     } face;
 
     ifstream f(file, ios::binary);
-    char temp[81];
-    f.get(temp, 81);
+    char temp[80];
+    f.read(temp, 80);
 
     unsigned int number;
-    f.get((char *) &number, 5);
+    f.read((char *) &number, 4);
 
     for (int i = 0; i < number; ++i) {
-        f.get((char *) &face, 51);
+        f.read((char *) &face, 50);
 
         Triangle triangle;
         triangle.v1.x = Fixed(face.v1.x);
@@ -128,6 +130,7 @@ void Mesh::debug_file() {
             out << contour << endl;
         }
     }
+    out << ":" << endl;
     for (auto& vector : infill) {
         for (auto& segment : vector) {
             out << segment << endl;
@@ -138,6 +141,8 @@ void Mesh::debug_file() {
 
 void Mesh::stl2gcode() {
     // stl2gcode(parameters)
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+
     cout << "triangles: " << triangles.size() << endl;
     // опредееление габоритов модели
     Fixed x_min = triangles.front().x_min();
@@ -184,53 +189,78 @@ void Mesh::stl2gcode() {
     }*/
 
     // слайсинг
-    Fixed dz(1.0f);
+    cout << "slicing"; start = std::chrono::system_clock::now();
+
+    Fixed dz(0.25f);
     slicing(z_min, z_max, dz);
+
+    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
+
+    // объединение отрезков в контуры
+    cout << "contour_construction"; start = std::chrono::system_clock::now();
+
+    for (int i = 0; i < segments.size(); ++i) {
+        auto contours = contour_construction(segments[i]);
+        shells[i].insert(shells[i].end(), contours.begin(), contours.end());
+    }
+
+    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
+
+    // заполнение модели
+    cout << "filling"; start = std::chrono::system_clock::now();
+    /*
+    for (int i = 0; i < shells.size(); ++i) {
+        auto segments = filling(shells[i]);
+        infill[i].insert(infill[i].end(), segments.begin(), segments.end());
+    }
+    */
+    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
+    //for (auto &v : planes) {
+    //auto _plane = plane_construction(v.second);
+    //}
+    // синтез g-code
+
 }
 
 void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
-    unsigned int p_size = static_cast<unsigned int>(((z_max - z_min) / dz).floor() + 1);
-    cout << "dz: " << dz << " p_size: " << p_size << endl;
+    unsigned int p_size = static_cast<unsigned int>(ceil((z_max - z_min) / dz) + 1);
+    cout << "(dz: " << dz << " p_size: " << p_size << ")";
 
     // сортировка треугольников
-    vector<vector<Triangle>> levels; // список из треугольников по уровням
+    typedef vector<Triangle>::iterator Triangle_;
+    vector<vector<Triangle_>> levels; // список из треугольников по уровням
     levels.resize(p_size);
 
-    for (auto &triangle : triangles) {
-        if (triangle.z_min() <= z_min) {
+    for (auto triangle = triangles.begin(); triangle != triangles.end(); ++triangle) {
+        if (triangle->z_min() <= z_min) {
             levels[0].push_back(triangle);
-        }
-        else if (triangle.z_min() > z_max) {
+        } else if (triangle->z_min() > z_max) {
             // nothing to do
         } else {
-            Fixed i = ((triangle.z_min() - z_min) / dz);
-            levels[i.floor() + (i.is_integer() ? 0 : 1)].push_back(triangle);
+            Fixed i = ((triangle->z_min() - z_min) / dz);
+            levels[floor(i) + (i.is_integer() ? 0 : 1)].push_back(triangle);
         }
     }
 
     // построение сечений
-    map<int, vector<Triangle>> planes;
+    //map<int, vector<Triangle>> planes;
     segments.resize(p_size);
-    vector<Triangle> current;
+    list<Triangle_> current;
     for (int i = 0; i < p_size; ++i) {
         Fixed plane_z = z_min + dz * i;
-        auto last = remove_if(current.begin(), current.end(), [&plane_z](const Triangle &t) -> bool {
-            return t.z_max() < plane_z;
+        current.remove_if([&plane_z] (const Triangle_ &t) -> bool {
+            return t->z_max() < plane_z;
         });
-        current.erase(last, current.end());
         current.insert(current.end(), levels[i].begin(), levels[i].end());
-        for (auto &t : current) {
-            if (t.belong_to_plane(plane_z)) {
-                planes[i].push_back(t);
+        for (auto& t : current) {
+            if (t->belong_to_plane(plane_z)) {
+                //planes[i].push_back(t);
             } else {
-                auto points = t.intersect(plane_z);
+                auto points = t->intersect(plane_z);
                 if (points.size() == 2) {
-                    Segment segment(points[0], points[1]);
-                    auto repet = find_if(segments[i].begin(), segments[i].end(), [&segment](const Segment &s) -> bool {
-                        return (s.v0 == segment.v0 && s.v1 == segment.v1) || (s.v0 == segment.v1 && s.v1 == segment.v0);
-                    });
-                    if (repet == segments[i].end()) {
-                        segments[i].push_back(segment);
+                    // убирает повторы отрезков, полученных на стыках треугольником с горизонтальным ребром
+                    if (t->z_max() != plane_z || plane_z == z_max) {
+                        segments[i].emplace_back(points[0], points[1]);
                     }
                 }
             }
@@ -239,19 +269,6 @@ void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
 
     shells.resize(p_size);
     infill.resize(p_size);
-    for (int i = 0; i < segments.size(); ++i) {
-        auto contours = contour_construction(segments[i]);
-        shells[i].insert(shells[i].end(), contours.begin(), contours.end());
-    }
-
-    for (int i = 0; i < shells.size(); ++i) {
-        auto segments = filling(shells[i]);
-        infill[i].insert(infill[i].end(), segments.begin(), segments.end());
-    }
-
-    /*for (auto &v : planes) {
-        auto _plane = plane_construction(v.second);
-    }*/
 }
 
 std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _segments) {
@@ -287,7 +304,7 @@ std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _seg
         if (contour.back() != contour.front() && contour.back().distance(contour.front()) <= near_point) {
             contour.back() = contour.front();
         }
-
+        /*
         // проверить точки на нахождение на одной прямой
         for (int i = 1; i < contour.size() - 1; ++i) {
             if (contour[i - 1] != contour[i + 1] && Segment(contour[i - 1], contour[i + 1]).distance(contour[i]) <= near_distance) {
@@ -303,8 +320,32 @@ std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _seg
                 contour.push_back(contour.front());
             }
         }
+        */
         contours.push_back(contour);
     }
+
+    return contours;
+}
+
+vector<Contour> Mesh::contour_construction2(const vector<Segment>& _segments, const Fixed& x_min, const Fixed& x_max, const Fixed& y_min, const Fixed& y_max) {
+    Fixed size(0.05);
+    int nx = ceil((x_max - x_min) / size);
+    int ny = ceil((y_max - y_min) / size);
+
+    unsigned int index(const Fixed& x, const Fixed& y) {
+        int index_x = floor((x - x_min)/ size);
+        if (x == x_max) index_x -= 1;
+        int index_y = floor((y - y_min) / size);
+        if (y == y_max) index_y -= 1;
+        return static_cast<unsigned int>(index_x + index_y * nx);
+    }
+
+    typedef vector<Segment>::const_iterator Segment_;
+    vector<Segment_> segments;
+    for (auto i = _segments.begin(); i != _segments.end(); ++i) {
+        segments.push_back(i);
+    }
+    vector<Contour> contours;
 
     return contours;
 }

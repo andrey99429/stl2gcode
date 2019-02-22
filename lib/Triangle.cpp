@@ -57,6 +57,6 @@ std::vector<Vertex> Triangle::intersect(Fixed z) const {
 }
 
 std::ostream& operator << (std::ostream& stream, const Triangle& t) {
-    stream << t.v1 << endl << t.v2 << endl << t.v3;
+    stream << t.v1 << " " << t.v2 << " " << t.v3;
     return stream;
 }

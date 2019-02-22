@@ -7,27 +7,37 @@ from PyPDF2 import PdfFileMerger
 root = os.path.dirname(os.path.abspath(__file__))
 
 
-def svg(contours):
+def svg(shells, infill):
     global root
 
     svgs = {}
-    for i in range(len(contours)):
-        curr_z = contours[i][2]
+    for i in range(len(shells)):
+        curr_z = shells[i][2]
         width = 0.75
         color = '#{:02x}{:02x}{:02x}'.format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
         stroke = 0.25
-        contour = contours[i]
-        del contour[2::3]
-        contour = [(contour[j], contour[j+1]) for j in range(0, len(contour), 2)]
-        code = ''
-        if len(contour) == 2:
-            width = 0.1
-            color = '#000'
-            stroke = 0.1
-        code += '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(contour[j][0])+','+str(contour[j][1]) for j in range(len(contour))]), color, width)
-        for point in contour:
+        shell = shells[i]
+        del shell[2::3]
+        shell = [(shell[j], shell[j+1]) for j in range(0, len(shell), 2)]
+        code = '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(shell[j][0])+','+str(shell[j][1]) for j in range(len(shell))]), color, width)
+        for point in shell:
             code += '<circle cx="{}" cy="{}" r="{}" fill="orange" stroke="black" stroke-width="{}"/>'.format(point[0], point[1], width, stroke)
-            #code += '<text x="{}" y="{}" text-anchor="middle" font-size="3px">{}</text>\n'.format(point[0], point[1]-1.25, str(point[0])+' '+str(point[1]))
+        code += '\n'
+        if curr_z not in svgs:
+            svgs[curr_z] = ''
+        svgs[curr_z] += code
+
+    for i in range(len(infill)):
+        curr_z = infill[i][2]
+        width = 0.1
+        color = '#000'
+        stroke = 0.1
+        line = infill[i]
+        del line[2::3]
+        line = [(line[j], line[j+1]) for j in range(0, len(line), 2)]
+        code = '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(line[j][0])+','+str(line[j][1]) for j in range(len(line))]), color, width)
+        for point in line:
+            code += '<circle cx="{}" cy="{}" r="{}" fill="orange" stroke="black" stroke-width="{}"/>'.format(point[0], point[1], width, stroke)
         code += '\n'
         if curr_z not in svgs:
             svgs[curr_z] = ''
@@ -57,10 +67,18 @@ if __name__ == '__main__':
     f = open(root + '/files/model.txt')
     data = f.readlines()
     f.close()
-    data = " ".join(data)
-    data = data.split('\n')
-    del data[len(data)-1]
 
-    for i in range(len(data)):
-        data[i] = list(map(float, data[i].split()))
-    svg(data)
+    data = " ".join(data)
+    data = data.split(':')
+    shells = data[0].split('\n')
+    del shells[-1]
+    infill = data[1].split('\n')
+    del infill[0]
+    del infill[-1]
+
+    for i in range(len(shells)):
+        shells[i] = list(map(float, shells[i].split()))
+    for i in range(len(infill)):
+        infill[i] = list(map(float, infill[i].split()))
+
+    svg(shells, infill)

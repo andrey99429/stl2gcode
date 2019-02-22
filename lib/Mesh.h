@@ -20,7 +20,7 @@ class Mesh {
     vector<Triangle> triangles;
     vector<vector<Segment>> segments;
     vector<vector<Contour>> shells; // стенки
-    vector<vector<Segment>> infill; // заполнение (внутреннее + основания) ? vector<Segment>
+    vector<vector<Segment>> infill; // заполнение (внутреннее + основания)
 
 
 public:
@@ -36,14 +36,12 @@ public:
     void stl2gcode();
 
     vector<Contour> contour_construction(const vector<Segment>& segments);
+    vector<Contour> contour_construction2(const vector<Segment>& segments,
+                                          const Fixed& x_min, const Fixed& x_max,
+                                          const Fixed& y_min, const Fixed& y_max);
     vector<Contour> plane_construction(const vector<Triangle>& triangles);
     vector<Segment> filling(const vector<Contour>& contours);
 
 };
-
-// slicing() vector<Triangle> -> map<int, vector<Segment>>, map<int, vector<Triangle>>
-// contour_construction() vector<Segment> -> Contour (vector<Vertex>) // all belong to one z
-// plane_construction() vector<Triangle> -> ? (vector<Contour>) // all belong to one z
-// supports_construction() vector<Contour> -> vector<Contour> // all belong to one z
 
 #endif
