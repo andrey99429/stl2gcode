@@ -11,15 +11,15 @@ public:
 
     explicit Triangle(Vertex v1 = Vertex(), Vertex v2 = Vertex(), Vertex v3 = Vertex());
 
-    Fixed x_min() const ;
-    Fixed x_max() const ;
-    Fixed y_min() const ;
-    Fixed y_max() const ;
-    Fixed z_min() const ;
-    Fixed z_max() const ;
+    float x_min() const ;
+    float x_max() const ;
+    float y_min() const ;
+    float y_max() const ;
+    float z_min() const ;
+    float z_max() const ;
 
-    bool belong_to_plane(Fixed z) const ;
-    std::vector<Vertex> intersect(Fixed z) const ;
+    bool belong_to_plane(float z) const ;
+    std::vector<Vertex> intersect(float z) const ;
     friend std::ostream& operator << (std::ostream& stream, const Triangle& t);
 };
 

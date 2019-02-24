@@ -6,9 +6,9 @@ using namespace std;
 int main() {
     string path = "../models/";
     vector<string> models = {"pyramid.stl",
-                            "tabouret.stl"};
+                             "3D_test.stl"};
 
-    Mesh mesh(path + models[1]);
+    Mesh mesh(path + models[0]);
     mesh.stl2gcode();
     mesh.debug_file();
 

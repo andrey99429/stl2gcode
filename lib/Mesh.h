@@ -13,7 +13,8 @@ using namespace std;
 
 
 class Mesh {
-    static const Fixed near_point, near_distance;
+    static const float near_point;
+    static const float near_distance;
 
     string file;
 
@@ -21,7 +22,6 @@ class Mesh {
     vector<vector<Segment>> segments;
     vector<vector<Contour>> shells; // стенки
     vector<vector<Segment>> infill; // заполнение (внутреннее + основания)
-
 
 public:
     explicit Mesh(const string& file);
@@ -31,16 +31,15 @@ public:
     bool is_ascii();
     void debug_file();
 
-    void slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz);
-
     void stl2gcode();
 
-    vector<Contour> contour_construction(const vector<Segment>& segments);
-    vector<Contour> contour_construction2(const vector<Segment>& segments,
-                                          const Fixed& x_min, const Fixed& x_max,
-                                          const Fixed& y_min, const Fixed& y_max);
+    void slicing(const float & z_min, const float & z_max, const float & dz);
+    void contour_construction(const vector<Segment>& segments, vector<Contour>& contours);
+    void filling(const vector<Contour>& contours, vector<Segment>& fillings);
+
+
+    vector<Contour> contour_construction2(const vector<Segment>& segments, const float& x_min, const float& x_max, const float& y_min, const float& y_max);
     vector<Contour> plane_construction(const vector<Triangle>& triangles);
-    vector<Segment> filling(const vector<Contour>& contours);
 
 };
 

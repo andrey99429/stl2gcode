@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cfloat>
+#include <cmath>
 
 #include "Segment.h"
 
@@ -8,12 +9,12 @@ using namespace std;
 
 Segment::Segment(Vertex v0, Vertex v1) : v0(v0), v1(v1) {}
 
-Vertex Segment::intersect_with_plane(const Fixed &z) const {
+Vertex Segment::intersect_with_plane(const float &z) const {
     Vertex p0 = v0;
     Vertex slope = v1 - v0;
     Vertex v;
     if (slope.z != 0) {
-        Fixed t = (z - p0.z) / slope.z;
+        float t = (z - p0.z) / slope.z;
         v.x = p0.x + t * slope.x;
         v.y = p0.y + t * slope.y;
         v.z = z;
@@ -23,30 +24,30 @@ Vertex Segment::intersect_with_plane(const Fixed &z) const {
     return v;
 }
 
-Fixed Segment::distance(const Vertex &v3) const {
+float Segment::distance(const Vertex &v3) const {
     Vertex slope = v1 - v0;
-    Fixed x = ((v3.x - v0.x) * slope.y - (v3.y - v0.y) * slope.x);
-    Fixed y = ((v3.y - v0.y) * slope.z - (v3.z - v0.z) * slope.y);
-    Fixed z = ((v3.x - v0.x) * slope.z - (v3.z - v0.z) * slope.x);
-    return ((x.square() + y.square() + z.square()).sqrt()) / (slope.x.square() + slope.y.square() + slope.z.square()).sqrt();
+    float x = ((v3.x - v0.x) * slope.y - (v3.y - v0.y) * slope.x);
+    float y = ((v3.y - v0.y) * slope.z - (v3.z - v0.z) * slope.y);
+    float z = ((v3.x - v0.x) * slope.z - (v3.z - v0.z) * slope.x);
+    return (sqrt(x*x + y*y + z*z)) / sqrt(slope.x*slope.x + slope.y*slope.y + slope.z*slope.z);
 }
 
 bool Segment::intersect_with_segment(const Segment &s2, Vertex &intersection) const {
     const Segment& s1 = *this;
     // ax + by = c
     struct Line {
-        Fixed a;
-        Fixed b;
-        Fixed c;
+        float a;
+        float b;
+        float c;
     };
     // from x-x0/x1-x0=y-y0/y1-y0
     // to ax + by = c
     Line l1 = {s1.v1.y - s1.v0.y, s1.v0.x - s1.v1.x, s1.v0.x * (s1.v1.y - s1.v0.y) - s1.v0.y * (s1.v1.x - s1.v0.x)};
     Line l2 = {s2.v1.y - s2.v0.y, s2.v0.x - s2.v1.x, s2.v0.x * (s2.v1.y - s2.v0.y) - s2.v0.y * (s2.v1.x - s2.v0.x)};
 
-    Fixed D = l1.a * l2.b - l2.a * l1.b;
-    Fixed Dx = l1.c * l2.b - l2.c * l1.b;
-    Fixed Dy = l1.a * l2.c - l2.a * l1.c;
+    float D = l1.a * l2.b - l2.a * l1.b;
+    float Dx = l1.c * l2.b - l2.c * l1.b;
+    float Dy = l1.a * l2.c - l2.a * l1.c;
 
     if (D == 0) {
         return false;

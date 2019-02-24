@@ -2,3 +2,5 @@
 files/
 models/
 venv/
+.DS_Store
+cmake-build-debug/

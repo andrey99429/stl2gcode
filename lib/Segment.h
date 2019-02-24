@@ -12,8 +12,8 @@ public:
 
     explicit Segment(Vertex v0 = Vertex(), Vertex v1 = Vertex());
 
-    Vertex intersect_with_plane(const Fixed &z) const ;
-    Fixed distance(const Vertex& v3) const ;
+    Vertex intersect_with_plane(const float &z) const ;
+    float distance(const Vertex& v3) const ;
     bool intersect_with_segment(const Segment &s2, Vertex &intersection) const ;
     bool operator==(const Segment& s) const ;
 

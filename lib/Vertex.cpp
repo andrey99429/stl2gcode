@@ -1,8 +1,9 @@
 #include "Vertex.h"
+#include <cmath>
 
 using namespace std;
 
-Vertex::Vertex(Fixed x, Fixed y, Fixed z) : x(x), y(y), z(z) {}
+Vertex::Vertex(float x, float y, float z) : x(x), y(y), z(z) {}
 
 bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
     return ((((v1.x <= this->x) && (this->x <= v2.x)) || ((v2.x <= this->x) && (this->x <= v1.x)))
@@ -11,7 +12,7 @@ bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
 }
 
 bool Vertex::between_with_e(const Vertex &v1, const Vertex &v2) const {
-    Fixed e(1ll);
+    float e = 10e-4;
     return ((((v1.x - e <= this->x) && (this->x <= v2.x + e)) || ((v2.x - e <= this->x) && (this->x <= v1.x + e)))
             && (((v1.y - e <= this->y) && (this->y <= v2.y + e)) || ((v2.y - e <= this->y) && (this->y <= v1.y + e)))
             && (((v1.z - e <= this->z) && (this->z <= v2.z + e)) || ((v2.z - e <= this->z) && (this->z <= v1.z + e))));
@@ -42,9 +43,9 @@ bool Vertex::operator<(const Vertex& v) const {
     return (this->x * this->x + this->y * this->y + this->z * this->z) < (v.x * v.x + v.y + v.y + v.z + v.z);
 }
 
-Fixed Vertex::distance(const Vertex &v) const {
+float Vertex::distance(const Vertex &v) const {
     auto d = *this - v;
-    return d.x.abs() + d.y.abs() + d.z.abs();
+    return sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
 }
 
 ostream& operator << (ostream& stream, const Vertex& v) {

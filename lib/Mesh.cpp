@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <cmath>
 #include <list>
 
 #include "Mesh.h"
@@ -10,8 +11,8 @@
 using namespace std;
 
 
-const Fixed Mesh::near_point(5ll);
-const Fixed Mesh::near_distance(0.3f);
+const float Mesh::near_point = 0.00002f;
+const float Mesh::near_distance = 0.03f;
 
 
 Mesh::Mesh(const std::string &file) {
@@ -34,17 +35,9 @@ void Mesh::stl_binary() {
         unsigned int number;
     } header;
 
-    struct _Vertex {
-        float x;
-        float y;
-        float z;
-    };
-
     struct Face {
-        _Vertex normal;
-        _Vertex v1;
-        _Vertex v2;
-        _Vertex v3;
+        Vertex normal;
+        Triangle triangle;
         unsigned short attribute;
     } face;
 
@@ -57,21 +50,7 @@ void Mesh::stl_binary() {
 
     for (int i = 0; i < number; ++i) {
         f.read((char *) &face, 50);
-
-        Triangle triangle;
-        triangle.v1.x = Fixed(face.v1.x);
-        triangle.v1.y = Fixed(face.v1.y);
-        triangle.v1.z = Fixed(face.v1.z);
-
-        triangle.v2.x = Fixed(face.v2.x);
-        triangle.v2.y = Fixed(face.v2.y);
-        triangle.v2.z = Fixed(face.v2.z);
-
-        triangle.v3.x = Fixed(face.v3.x);
-        triangle.v3.y = Fixed(face.v3.y);
-        triangle.v3.z = Fixed(face.v3.z);
-
-        triangles.push_back(triangle);
+        triangles.push_back(face.triangle);
     }
     f.close();
 }
@@ -145,12 +124,12 @@ void Mesh::stl2gcode() {
 
     cout << "triangles: " << triangles.size() << endl;
     // опредееление габоритов модели
-    Fixed x_min = triangles.front().x_min();
-    Fixed x_max = triangles.front().x_max();
-    Fixed y_min = triangles.front().y_min();
-    Fixed y_max = triangles.front().y_max();
-    Fixed z_min = triangles.front().z_min();
-    Fixed z_max = triangles.front().z_max();
+    float x_min = triangles.front().x_min();
+    float x_max = triangles.front().x_max();
+    float y_min = triangles.front().y_min();
+    float y_max = triangles.front().y_max();
+    float z_min = triangles.front().z_min();
+    float z_max = triangles.front().z_max();
 
     for (auto& triangle : triangles) {
         if (x_min > triangle.x_min()) {
@@ -191,7 +170,7 @@ void Mesh::stl2gcode() {
     // слайсинг
     cout << "slicing"; start = std::chrono::system_clock::now();
 
-    Fixed dz(0.25f);
+    float dz = 0.25f;
     slicing(z_min, z_max, dz);
 
     end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
@@ -200,30 +179,25 @@ void Mesh::stl2gcode() {
     cout << "contour_construction"; start = std::chrono::system_clock::now();
 
     for (int i = 0; i < segments.size(); ++i) {
-        auto contours = contour_construction(segments[i]);
-        shells[i].insert(shells[i].end(), contours.begin(), contours.end());
+        contour_construction(segments[i], shells[i]);
     }
 
     end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
-
     // заполнение модели
     cout << "filling"; start = std::chrono::system_clock::now();
-    /*
+
     for (int i = 0; i < shells.size(); ++i) {
-        auto segments = filling(shells[i]);
-        infill[i].insert(infill[i].end(), segments.begin(), segments.end());
+        filling(shells[i], infill[i]);
     }
-    */
+
     end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
-    //for (auto &v : planes) {
-    //auto _plane = plane_construction(v.second);
-    //}
+
     // синтез g-code
 
 }
 
-void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
-    unsigned int p_size = static_cast<unsigned int>(ceil((z_max - z_min) / dz) + 1);
+void Mesh::slicing(const float& z_min, const float& z_max, const float& dz) {
+    auto p_size = static_cast<unsigned int>(roundf((z_max - z_min) / dz) + 1); // TO DO: найти точную формулу
     cout << "(dz: " << dz << " p_size: " << p_size << ")";
 
     // сортировка треугольников
@@ -232,14 +206,9 @@ void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
     levels.resize(p_size);
 
     for (auto triangle = triangles.begin(); triangle != triangles.end(); ++triangle) {
-        if (triangle->z_min() <= z_min) {
-            levels[0].push_back(triangle);
-        } else if (triangle->z_min() > z_max) {
-            // nothing to do
-        } else {
-            Fixed i = ((triangle->z_min() - z_min) / dz);
-            levels[floor(i) + (i.is_integer() ? 0 : 1)].push_back(triangle);
-        }
+        float i = ((triangle->z_min() - z_min) / dz);
+        int ii = static_cast<int>(floorf(i) + (floorf(i) == i ? 0 : 1));
+        levels[ii].push_back(triangle);
     }
 
     // построение сечений
@@ -247,7 +216,7 @@ void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
     segments.resize(p_size);
     list<Triangle_> current;
     for (int i = 0; i < p_size; ++i) {
-        Fixed plane_z = z_min + dz * i;
+        float plane_z = z_min + dz * i;
         current.remove_if([&plane_z] (const Triangle_ &t) -> bool {
             return t->z_max() < plane_z;
         });
@@ -271,9 +240,8 @@ void Mesh::slicing(const Fixed& z_min, const Fixed& z_max, const Fixed& dz) {
     infill.resize(p_size);
 }
 
-std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _segments) {
+void Mesh::contour_construction(const std::vector<Segment>& _segments, vector<Contour>& contours) {
     vector<Segment> segments(_segments.begin(), _segments.end());
-    vector<Contour> contours;
 
     while (!segments.empty()) {
         Vertex v1 = segments.begin()->v0;
@@ -304,7 +272,7 @@ std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _seg
         if (contour.back() != contour.front() && contour.back().distance(contour.front()) <= near_point) {
             contour.back() = contour.front();
         }
-        /*
+
         // проверить точки на нахождение на одной прямой
         for (int i = 1; i < contour.size() - 1; ++i) {
             if (contour[i - 1] != contour[i + 1] && Segment(contour[i - 1], contour[i + 1]).distance(contour[i]) <= near_distance) {
@@ -320,42 +288,17 @@ std::vector<Contour> Mesh::contour_construction(const std::vector<Segment>& _seg
                 contour.push_back(contour.front());
             }
         }
-        */
+
         contours.push_back(contour);
     }
-
-    return contours;
 }
 
-vector<Contour> Mesh::contour_construction2(const vector<Segment>& _segments, const Fixed& x_min, const Fixed& x_max, const Fixed& y_min, const Fixed& y_max) {
-    Fixed size(0.05);
-    int nx = ceil((x_max - x_min) / size);
-    int ny = ceil((y_max - y_min) / size);
-
-    unsigned int index(const Fixed& x, const Fixed& y) {
-        int index_x = floor((x - x_min)/ size);
-        if (x == x_max) index_x -= 1;
-        int index_y = floor((y - y_min) / size);
-        if (y == y_max) index_y -= 1;
-        return static_cast<unsigned int>(index_x + index_y * nx);
-    }
-
-    typedef vector<Segment>::const_iterator Segment_;
-    vector<Segment_> segments;
-    for (auto i = _segments.begin(); i != _segments.end(); ++i) {
-        segments.push_back(i);
-    }
-    vector<Contour> contours;
-
-    return contours;
-}
-
-vector<Segment> Mesh::filling(const vector<Contour>& contours) {
-    Fixed x_min = contours.front().front().x;
-    Fixed x_max = contours.front().front().x;
-    Fixed y_min = contours.front().front().y;
-    Fixed y_max = contours.front().front().y;
-    Fixed z = contours.front().front().z;
+void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings) {
+    float x_min = contours.front().front().x;
+    float x_max = contours.front().front().x;
+    float y_min = contours.front().front().y;
+    float y_max = contours.front().front().y;
+    float z = contours.front().front().z;
 
     for (auto& contour: contours) {
         for (auto& vertex: contour) {
@@ -372,34 +315,32 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
         }
     }
 
-    Fixed dt(5);
+    float dt(5);
     vector<Segment> infill_lines;
-
-    for (Fixed y = y_min; y < y_max; y += dt) { // ↘ low
-        Fixed b = y - x_min;
-        Fixed x = y_max - b;
+    for (float y = y_min; y < y_max; y += dt) { // ↘ low
+        float b = y - x_min;
+        float x = y_max - b;
         infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
     }
 
-    for (Fixed x = x_min + dt; x < x_max; x += dt) { // ↘ up
-        Fixed b = y_min - x;
-        Fixed y = x_max + b;
+    for (float x = x_min + dt; x < x_max; x += dt) { // ↘ up
+        float b = y_min - x;
+        float y = x_max + b;
         infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
     }
 
-    for (Fixed x = x_min; x < x_max; x += dt) { // ↗ low
-        Fixed b = y_max + x;
-        Fixed y = b - x_max;
+    for (float x = x_min; x < x_max; x += dt) { // ↗ low
+        float b = y_max + x;
+        float y = b - x_max;
         infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
     }
 
-    for (Fixed y = y_min + dt; y < y_max; y += dt) { // ↗ up
-        Fixed b = y + x_min;
-        Fixed x = b - y_min;
+    for (float y = y_min + dt; y < y_max; y += dt) { // ↗ up
+        float b = y + x_min;
+        float x = b - y_min;
         infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
     }
 
-    vector<Segment> fillings;
     for (auto& infill_line : infill_lines) {
         vector<Vertex> intersections;
         for (auto& contour: contours) {
@@ -426,8 +367,6 @@ vector<Segment> Mesh::filling(const vector<Contour>& contours) {
             }
         }
     }
-
-    return fillings;
 }
 
 vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {
@@ -455,10 +394,38 @@ vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {
     /*for (auto& segment : segments) {
         cout << segment << endl;
     }*/
-    auto contours = contour_construction(segments);
+    vector<Contour> contours;
+    contour_construction(segments, contours);
     for (auto& contour : contours) {
         cout << contour << endl;
     }
     cout << endl;
+    return contours;
+}
+
+pair<unsigned int, unsigned int> index(const float& x, const float& y, const float& x_min, const float& x_max, const float& y_min, const float& y_max, const float& size, const float& nx) {
+    auto index_x = static_cast<unsigned int>(floorf((x - x_min) / size));
+    if (x == x_max) index_x -= 1;
+    auto index_y = static_cast<unsigned int>(floorf((y - y_min) / size));
+    if (y == y_max) index_y -= 1;
+    return make_pair(index_x, index_y);
+}
+
+vector<Contour> Mesh::contour_construction2(const vector<Segment>& _segments, const float& x_min, const float& x_max, const float& y_min, const float& y_max) {
+    typedef vector<Segment>::const_iterator Segment_;
+
+    float size = 0.05f;
+    int nx = static_cast<int>(ceilf((x_max - x_min) / size));
+    int ny = static_cast<int>(ceilf((y_max - y_min) / size));
+
+    map<unsigned long long, vector<vector<Segment_>::iterator>> index_list;
+
+    vector<Segment_> segments;
+    for (auto i = _segments.begin(); i != _segments.end(); ++i) {
+        segments.push_back(i);
+        //index_list[index()].push_back();
+    }
+    vector<Contour> contours;
+
     return contours;
 }

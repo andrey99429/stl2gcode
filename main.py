@@ -4,7 +4,7 @@ from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 from PyPDF2 import PdfFileMerger
 
-root = os.path.dirname(os.path.abspath(__file__))
+root = os.path.dirname(os.path.abspath(__file__)) + '/files/'
 
 
 def svg(shells, infill):
@@ -13,15 +13,13 @@ def svg(shells, infill):
     svgs = {}
     for i in range(len(shells)):
         curr_z = shells[i][2]
-        width = 0.75
         color = '#{:02x}{:02x}{:02x}'.format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        stroke = 0.25
         shell = shells[i]
         del shell[2::3]
         shell = [(shell[j], shell[j+1]) for j in range(0, len(shell), 2)]
-        code = '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(shell[j][0])+','+str(shell[j][1]) for j in range(len(shell))]), color, width)
+        code = '<polyline points="{}" stroke="{}" stroke-width="0.05" fill="none"/>'.format(' '.join([str(shell[j][0])+','+str(shell[j][1]) for j in range(len(shell))]), color)
         for point in shell:
-            code += '<circle cx="{}" cy="{}" r="{}" fill="orange" stroke="black" stroke-width="{}"/>'.format(point[0], point[1], width, stroke)
+            code += '<circle cx="{}" cy="{}" fill="orange" r="0.05" stroke="black" stroke-width="0.02"/>'.format(point[0], point[1])
         code += '\n'
         if curr_z not in svgs:
             svgs[curr_z] = ''
@@ -29,15 +27,12 @@ def svg(shells, infill):
 
     for i in range(len(infill)):
         curr_z = infill[i][2]
-        width = 0.1
-        color = '#000'
-        stroke = 0.1
         line = infill[i]
         del line[2::3]
         line = [(line[j], line[j+1]) for j in range(0, len(line), 2)]
-        code = '<polyline points="{}" stroke="{}" stroke-width="{}" fill="none"/>'.format(' '.join([str(line[j][0])+','+str(line[j][1]) for j in range(len(line))]), color, width)
+        code = '<polyline points="{}" stroke="#000" stroke-width="0.025" fill="none"/>'.format(' '.join([str(line[j][0])+','+str(line[j][1]) for j in range(len(line))]))
         for point in line:
-            code += '<circle cx="{}" cy="{}" r="{}" fill="orange" stroke="black" stroke-width="{}"/>'.format(point[0], point[1], width, stroke)
+            code += '<circle cx="{}" cy="{}" fill="black" r="0.03" stroke="black" stroke-width="0"/>'.format(point[0], point[1])
         code += '\n'
         if curr_z not in svgs:
             svgs[curr_z] = ''
@@ -49,7 +44,7 @@ def svg(shells, infill):
         svg += code
         svg += '<text x = "-149.5" y="-141" font-size="12" font-weight="bold" font-family="Avenir, Helvetica, sans-serif">z={}</text>\n'.format(curr_z)
         svg += '</svg>'
-        path = root+'/files/'+str(curr_z)
+        path = root+str(curr_z)
         f = open(path+'.svg', 'w')
         f.write(svg)
         f.close()
@@ -59,12 +54,12 @@ def svg(shells, infill):
         os.remove(path+'.svg')
         os.remove(path+'.pdf')
 
-    merger.write(root+'/files/model.pdf')
-    os.system('open '+root+'/files/model.pdf')
+    merger.write(root+'model.pdf')
+    os.system('open '+root+'model.pdf')
 
 
 if __name__ == '__main__':
-    f = open(root + '/files/model.txt')
+    f = open(root + 'model.txt')
     data = f.readlines()
     f.close()
 
