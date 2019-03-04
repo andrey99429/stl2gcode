@@ -8,15 +8,16 @@
 #include "Mesh.h"
 #include "extra.h"
 
-using namespace std;
+using namespace chrono;
 
 
 const float Mesh::near_point = 0.00002f;
 const float Mesh::near_distance = 0.03f;
 
 
-Mesh::Mesh(const std::string &file) {
+Mesh::Mesh(const string &file, const stl2gcode_parameters& parameters) {
     this->file = file;
+    this->parameters = parameters;
     fstream f(file);
     if (!f.is_open()) {
         throw invalid_argument("File doesn't exists!");
@@ -119,8 +120,7 @@ void Mesh::debug_file() {
 }
 
 void Mesh::stl2gcode() {
-    // stl2gcode(parameters)
-    std::chrono::time_point<std::chrono::system_clock> start, end;
+    time_point<system_clock> start, end;
 
     cout << "triangles: " << triangles.size() << endl;
     // опредееление габоритов модели
@@ -168,36 +168,43 @@ void Mesh::stl2gcode() {
     }*/
 
     // слайсинг
-    cout << "slicing"; start = std::chrono::system_clock::now();
+    cout << "slicing"; start = system_clock::now();
 
-    float dz = 0.25f;
-    slicing(z_min, z_max, dz);
-
-    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
+    slicing(z_min, z_max, parameters.layer_height);
+    triangles.clear();
+    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
     // объединение отрезков в контуры
-    cout << "contour_construction"; start = std::chrono::system_clock::now();
+    cout << "contour_construction"; start = system_clock::now();
 
     for (int i = 0; i < segments.size(); ++i) {
-        contour_construction(segments[i], shells[i]);
+        if (!segments[i].empty()) {
+            contour_construction(segments[i], shells[i]);
+        }
     }
+    segments.clear();
+    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
-    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
     // заполнение модели
-    cout << "filling"; start = std::chrono::system_clock::now();
+    cout << "filling"; start = system_clock::now();
 
     for (int i = 0; i < shells.size(); ++i) {
-        filling(shells[i], infill[i]);
+        if (!shells[i].empty()) {
+            filling(shells[i], infill[i]);
+        }
     }
 
-    end = std::chrono::system_clock::now(); cout << ": " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() / 1000.0 << endl;
+    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
     // синтез g-code
+    cout << "gcode"; start = system_clock::now();
+    gcode("../files/gcode.gcode");
 
+    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 }
 
 void Mesh::slicing(const float& z_min, const float& z_max, const float& dz) {
-    auto p_size = static_cast<unsigned int>(roundf((z_max - z_min) / dz) + 1); // TO DO: найти точную формулу
+    auto p_size = static_cast<unsigned int>(ceilf((z_max - z_min) / dz) + 1); // TO DO: найти точную формулу
     cout << "(dz: " << dz << " p_size: " << p_size << ")";
 
     // сортировка треугольников
@@ -240,7 +247,7 @@ void Mesh::slicing(const float& z_min, const float& z_max, const float& dz) {
     infill.resize(p_size);
 }
 
-void Mesh::contour_construction(const std::vector<Segment>& _segments, vector<Contour>& contours) {
+void Mesh::contour_construction(const vector<Segment>& _segments, vector<Contour>& contours) {
     vector<Segment> segments(_segments.begin(), _segments.end());
 
     while (!segments.empty()) {
@@ -367,6 +374,48 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings) {
             }
         }
     }
+}
+
+void Mesh::gcode(const string& path) {
+    ofstream out(path);
+    /*
+    1. Подготовительные операции. Здесь подготавливается 3d принтер к печати, запускаются нагрев стола, экструдера, устанавливается параметры системы координат, включается охлаждение, перемещение головки в нулевую точку отсчета, выдавливается тестовая порция пластика и другие установленные параметры.
+    2. Непосредственно 3d печать объекта.
+    3. Заключительный этап. Перемещение экструдера и стола в исходное положение, отключение нагрева всех элементов 3d принтера и т.д.
+    */
+    out.precision(4);
+    out << "T0" << endl;
+    out << "G21" << endl; // metric values
+    out << "G90" << endl; // absolute coordinates
+    out << "M82" << endl; // absolute extrusion mode
+    out << "M104 S" << parameters.nozzle_temperature << endl; // turning on the extruder heating
+    out << "M140 S" << parameters.table_temperature << endl; // turning on the table heating
+    out << "G28 X0 Y0 Z0" << endl; // initial position
+    out << "G92 E0" << endl; // clears the amount of extruded plastic
+
+    float extruded = 0.0f;
+    for (int l = 0; l < shells.size(); ++l) {
+        out << ";LAYER:" << l << endl;
+        if (!shells[l].empty()) {
+            out << "G0 Z" << shells[l].front().front().z << " F" << parameters.moving_speed << endl;
+            for (auto& contour : shells[l]) {
+                out << "G0 X" << contour.front().x << " Y" << contour.front().y << " F" << parameters.moving_speed << endl;
+                for (int i = 1; i < contour.size(); ++i) {
+                    extruded += pow(parameters.nozzle_diameter / parameters.thread_thickness, 2) * contour[i].distance(contour[i-1]);
+                    out << "G1 X" << contour[i].x << " Y" << contour[i].y << " E" << extruded << " F" << parameters.printing_speed << endl;
+                }
+            }
+            out << ";INFILL" << endl;
+            //out << "G0 X" << infill[l].front().v0.x << " Y" << infill[l].front().v1.y << " F" << parameters.moving_speed << endl;
+            for (auto& segment : infill[l]) {
+                //
+            }
+        }
+    }
+
+    out << "M104 S0" << endl; // turning off the extruder heating
+    out << "M140 S0" << endl; // turning off the table heating
+    out.close();
 }
 
 vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {

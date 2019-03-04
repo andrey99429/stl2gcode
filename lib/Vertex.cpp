@@ -45,7 +45,7 @@ bool Vertex::operator<(const Vertex& v) const {
 
 float Vertex::distance(const Vertex &v) const {
     auto d = *this - v;
-    return sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
+    return hypot(d.x, d.y, d.z);
 }
 
 ostream& operator << (ostream& stream, const Vertex& v) {

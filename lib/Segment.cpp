@@ -29,7 +29,7 @@ float Segment::distance(const Vertex &v3) const {
     float x = ((v3.x - v0.x) * slope.y - (v3.y - v0.y) * slope.x);
     float y = ((v3.y - v0.y) * slope.z - (v3.z - v0.z) * slope.y);
     float z = ((v3.x - v0.x) * slope.z - (v3.z - v0.z) * slope.x);
-    return (sqrt(x*x + y*y + z*z)) / sqrt(slope.x*slope.x + slope.y*slope.y + slope.z*slope.z);
+    return hypot(x, y, z) / hypot(slope.x, slope.y, slope.z);
 }
 
 bool Segment::intersect_with_segment(const Segment &s2, Vertex &intersection) const {
