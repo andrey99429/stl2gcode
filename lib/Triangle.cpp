@@ -37,6 +37,13 @@ bool Triangle::belong_to_plane(float z) const {
     return (z == v1.z) && (z == v2.z) && (z == v3.z);
 }
 
+Triangle& Triangle::operator+=(Vertex shift) {
+    v1 += shift;
+    v2 += shift;
+    v3 += shift;
+    return *this;
+}
+
 std::vector<Vertex> Triangle::intersect(float z) const {
     Segment l1(v1, v2), l2(v2, v3), l3(v3, v1);
     Vertex p1 = l1.intersect_with_plane(z);

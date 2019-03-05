@@ -18,6 +18,8 @@ public:
     float z_min() const ;
     float z_max() const ;
 
+    Triangle& operator+=(Vertex shift);
+
     bool belong_to_plane(float z) const ;
     std::vector<Vertex> intersect(float z) const ;
     friend std::ostream& operator << (std::ostream& stream, const Triangle& t);

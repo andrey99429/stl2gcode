@@ -14,7 +14,8 @@ int main() {
     mesh.stl2gcode();
     mesh.debug_file();
 
-    cout << "python" << endl;
-    //system("/Users/andrey/OneDrive/Project/stl2gcode/venv/bin/python /Users/andrey/OneDrive/Project/stl2gcode/main.py");
+    cout << "python"; auto start = chrono::system_clock::now();
+    system("/Users/andrey/OneDrive/Project/stl2gcode/venv/bin/python /Users/andrey/OneDrive/Project/stl2gcode/main.py");
+    auto end = chrono::system_clock::now(); cout << ": " << chrono::duration_cast<chrono::milliseconds>(end-start).count() / 1000.0 << endl;
     return 0;
 }

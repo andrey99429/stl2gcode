@@ -34,7 +34,7 @@ void Mesh::stl_binary() {
     struct Header {
         char info[80];
         unsigned int number;
-    } header;
+    } header{};
 
     struct Face {
         Vertex normal;
@@ -152,20 +152,23 @@ void Mesh::stl2gcode() {
         }
     }
 
+    // сдвиг модели в центр принтера
+    Vertex shift;
+    shift.x = parameters.printer_width / 2.0f - x_min - (x_max - x_min) / 2.0f;
+    shift.y = parameters.printer_depth / 2.0f - y_min - (y_max - y_min) / 2.0f;
+    shift.z = -z_min;
+
+    for (auto& triangle: triangles) {
+        triangle += shift;
+    }
+
+    x_min += shift.x;   x_max += shift.x;
+    y_min += shift.y;   y_max += shift.y;
+    z_min += shift.z;   z_max += shift.z;
+
     cout << "x_min: " << x_min << " x_max: " << x_max << endl;
     cout << "y_min: " << y_min << " y_max: " << y_max << endl;
     cout << "z_min: " << z_min << " z_max: " << z_max << endl;
-
-    // сдвиг модели в центр
-    /*Vertex shift;
-    shift.x = -(x_max - x_min) / 2;
-    shift.y = -(y_max - y_min) / 2;
-    shift.z = -z_min;
-    for (auto& triangle: triangles) {
-        triangle.v1 += shift;
-        triangle.v2 += shift;
-        triangle.v3 += shift;
-    }*/
 
     // слайсинг
     cout << "slicing"; start = system_clock::now();
@@ -188,9 +191,11 @@ void Mesh::stl2gcode() {
     // заполнение модели
     cout << "filling"; start = system_clock::now();
 
+    int plane_levels_count = static_cast<int>(round(parameters.top_bottom_thickness / parameters.layer_height));
+    // TO DO: FIX PLANES
     for (int i = 0; i < shells.size(); ++i) {
         if (!shells[i].empty()) {
-            filling(shells[i], infill[i]);
+            filling(shells[i], infill[i], i, i < plane_levels_count);
         }
     }
 
@@ -198,7 +203,7 @@ void Mesh::stl2gcode() {
 
     // синтез g-code
     cout << "gcode"; start = system_clock::now();
-    gcode("../files/gcode.gcode");
+    gcode("../files/model.gcode");
 
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 }
@@ -219,7 +224,6 @@ void Mesh::slicing(const float& z_min, const float& z_max, const float& dz) {
     }
 
     // построение сечений
-    //map<int, vector<Triangle>> planes;
     segments.resize(p_size);
     list<Triangle_> current;
     for (int i = 0; i < p_size; ++i) {
@@ -230,7 +234,7 @@ void Mesh::slicing(const float& z_min, const float& z_max, const float& dz) {
         current.insert(current.end(), levels[i].begin(), levels[i].end());
         for (auto& t : current) {
             if (t->belong_to_plane(plane_z)) {
-                //planes[i].push_back(t);
+                planes.push_back(i);
             } else {
                 auto points = t->intersect(plane_z);
                 if (points.size() == 2) {
@@ -300,7 +304,7 @@ void Mesh::contour_construction(const vector<Segment>& _segments, vector<Contour
     }
 }
 
-void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings) {
+void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane) {
     float x_min = contours.front().front().x;
     float x_max = contours.front().front().x;
     float y_min = contours.front().front().y;
@@ -322,30 +326,39 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings) {
         }
     }
 
-    float dt(5);
+    float max_diameter = min(x_max - x_min, y_max - y_min) / 10;
+    float dt = (parameters.nozzle_diameter - max_diameter) * parameters.filling_density + max_diameter;
+    if (is_plane) {
+        dt = parameters.nozzle_diameter;
+    }
+
     vector<Segment> infill_lines;
-    for (float y = y_min; y < y_max; y += dt) { // ↘ low
-        float b = y - x_min;
-        float x = y_max - b;
-        infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
+    if (!is_plane || level % 2 == 0) {
+        for (float y = y_min - 0.5 * dt; y < y_max; y += dt) { // ↘ low
+            float b = y - x_min;
+            float x = y_max - b;
+            infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
+        }
+
+        for (float x = x_min + 0.5 * dt; x < x_max; x += dt) { // ↘ up
+            float b = y_min - x;
+            float y = x_max + b;
+            infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
+        }
     }
 
-    for (float x = x_min + dt; x < x_max; x += dt) { // ↘ up
-        float b = y_min - x;
-        float y = x_max + b;
-        infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
-    }
+    if (!is_plane || level % 2 == 1) {
+        for (float x = x_min - 0.5 * dt; x < x_max; x += dt) { // ↗ low
+            float b = y_max + x;
+            float y = b - x_max;
+            infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
+        }
 
-    for (float x = x_min; x < x_max; x += dt) { // ↗ low
-        float b = y_max + x;
-        float y = b - x_max;
-        infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
-    }
-
-    for (float y = y_min + dt; y < y_max; y += dt) { // ↗ up
-        float b = y + x_min;
-        float x = b - y_min;
-        infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
+        for (float y = y_min + 0.5 * dt; y < y_max; y += dt) { // ↗ up
+            float b = y + x_min;
+            float x = b - y_min;
+            infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
+        }
     }
 
     for (auto& infill_line : infill_lines) {
@@ -377,23 +390,26 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings) {
 }
 
 void Mesh::gcode(const string& path) {
+    parameters.moving_speed = 60 * parameters.moving_speed;
+    parameters.filling_speed = 60 * parameters.filling_speed;
+    parameters.printing_speed = 60 * parameters.printing_speed;
+
     ofstream out(path);
-    /*
-    1. Подготовительные операции. Здесь подготавливается 3d принтер к печати, запускаются нагрев стола, экструдера, устанавливается параметры системы координат, включается охлаждение, перемещение головки в нулевую точку отсчета, выдавливается тестовая порция пластика и другие установленные параметры.
-    2. Непосредственно 3d печать объекта.
-    3. Заключительный этап. Перемещение экструдера и стола в исходное положение, отключение нагрева всех элементов 3d принтера и т.д.
-    */
-    out.precision(4);
-    out << "T0" << endl;
+    out.precision(6);
     out << "G21" << endl; // metric values
     out << "G90" << endl; // absolute coordinates
     out << "M82" << endl; // absolute extrusion mode
-    out << "M104 S" << parameters.nozzle_temperature << endl; // turning on the extruder heating
-    out << "M140 S" << parameters.table_temperature << endl; // turning on the table heating
     out << "G28 X0 Y0 Z0" << endl; // initial position
+    out << "G0 Z100" << endl; // опустить стол перед нагревом
+    out << "M140 S" << parameters.table_temperature << endl; // turning on the table heating
+    out << "M190" << endl;
+    out << "M104 S" << parameters.nozzle_temperature << endl; // turning on the extruder heating
+    out << "M109" << endl;
+    out << "G0 Z0" << endl; // initial position
     out << "G92 E0" << endl; // clears the amount of extruded plastic
 
     float extruded = 0.0f;
+    float printing_time = 0.0f;
     for (int l = 0; l < shells.size(); ++l) {
         out << ";LAYER:" << l << endl;
         if (!shells[l].empty()) {
@@ -402,20 +418,27 @@ void Mesh::gcode(const string& path) {
                 out << "G0 X" << contour.front().x << " Y" << contour.front().y << " F" << parameters.moving_speed << endl;
                 for (int i = 1; i < contour.size(); ++i) {
                     extruded += pow(parameters.nozzle_diameter / parameters.thread_thickness, 2) * contour[i].distance(contour[i-1]);
+                    printing_time += contour[i].distance(contour[i-1]) / parameters.printing_speed;
                     out << "G1 X" << contour[i].x << " Y" << contour[i].y << " E" << extruded << " F" << parameters.printing_speed << endl;
                 }
             }
             out << ";INFILL" << endl;
-            //out << "G0 X" << infill[l].front().v0.x << " Y" << infill[l].front().v1.y << " F" << parameters.moving_speed << endl;
             for (auto& segment : infill[l]) {
-                //
+                extruded += pow(parameters.nozzle_diameter / parameters.thread_thickness, 2) * segment.v1.distance(segment.v0);
+                printing_time += segment.v1.distance(segment.v0) / (parameters.filling_speed + parameters.moving_speed);
+                out << "G0 X" << segment.v0.x << " Y" << segment.v0.y << " F" << parameters.moving_speed << endl;
+                out << "G1 X" << segment.v1.x << " Y" << segment.v1.y << " E" << extruded << " F" << parameters.filling_speed << endl;
             }
         }
     }
 
     out << "M104 S0" << endl; // turning off the extruder heating
     out << "M140 S0" << endl; // turning off the table heating
+    out << "G0 X0 Y0 Z" << parameters.printer_height << endl;
+    out << "M18" << endl; // выключение питания двигателя
     out.close();
+
+    cout << "(printing time: " << (int) printing_time / 3600 << "h " << (int) printing_time % 3600 << "m)";
 }
 
 vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {

@@ -1,4 +1,5 @@
 import os
+import sys
 import random
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
@@ -40,9 +41,9 @@ def svg(shells, infill):
 
     merger = PdfFileMerger()
     for curr_z, code in svgs.items():
-        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" version="1.1" viewBox="-150 -150 300 300">\n'
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="215" height="215" version="1.1">\n'
         svg += code
-        svg += '<text x = "-149.5" y="-141" font-size="12" font-weight="bold" font-family="Avenir, Helvetica, sans-serif">z={}</text>\n'.format(curr_z)
+        svg += '<text x = "1" y="10" font-size="12" font-weight="bold" font-family="Avenir, Helvetica, sans-serif">z={}</text>\n'.format(curr_z)
         svg += '</svg>'
         path = root+str(curr_z)
         f = open(path+'.svg', 'w')

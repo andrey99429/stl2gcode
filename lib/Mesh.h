@@ -17,13 +17,17 @@ struct stl2gcode_parameters {
     float thread_thickness = 1.75f;
     float top_bottom_thickness = 0.5f;
     float shell_thickness = 1.0f; // !!!
-    float filling_density = 0.15; // 15%
+    float filling_density = 0.15; // %
     int nozzle_temperature = 205;
     int table_temperature = 55;
     int printing_speed = 35;
     int filling_speed = 40;
     int moving_speed = 90;
     int printing_acceleration = 1000;
+
+    int printer_width = 215;
+    int printer_depth = 215;
+    int printer_height = 300;
 };
 
 class Mesh {
@@ -37,6 +41,7 @@ class Mesh {
     vector<vector<Segment>> segments;
     vector<vector<Contour>> shells; // стенки
     vector<vector<Segment>> infill; // заполнение (внутреннее + основания)
+    vector<int> planes;
 
 public:
     explicit Mesh(const string& file, const stl2gcode_parameters& parameters);
@@ -48,9 +53,9 @@ public:
 
     void stl2gcode();
 
-    void slicing(const float & z_min, const float & z_max, const float & dz);
+    void slicing(const float& z_min, const float& z_max, const float& dz);
     void contour_construction(const vector<Segment>& segments, vector<Contour>& contours);
-    void filling(const vector<Contour>& contours, vector<Segment>& fillings);
+    void filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane);
 
     void gcode(const string& path);
 
