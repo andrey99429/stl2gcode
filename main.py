@@ -1,5 +1,4 @@
 import os
-import sys
 import random
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF

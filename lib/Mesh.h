@@ -11,6 +11,10 @@
 
 using namespace std;
 
+/// stl2gcode_parameters - поиск сечений
+/// \param z_min - мин z
+/// \param z_max - мак z
+/// \param dz - шаг
 struct stl2gcode_parameters {
     float layer_height = 0.2f;
     float nozzle_diameter = 0.25f;
@@ -30,6 +34,7 @@ struct stl2gcode_parameters {
     int printer_height = 300;
 };
 
+
 class Mesh {
     static const float near_point;
     static const float near_distance;
@@ -47,8 +52,7 @@ class Mesh {
     void stl_binary();
     void stl_ascii();
     bool is_ascii();
-
-    void slicing(const float& z_min, const float& z_max, const float& dz);
+    void slicing(const float& dz);
     void contour_construction(const vector<Segment>& segments, vector<Contour>& contours);
     void filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane);
     void gcode(const string& path);

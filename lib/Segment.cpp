@@ -10,13 +10,11 @@ using namespace std;
 
 Segment::Segment(Vertex v0, Vertex v1) : v0(v0), v1(v1) {}
 
-Vertex& Segment::operator[](int i) {
-    if (i == 0) {
-        return this->v0;
-    } else if (i == 1) {
+const Vertex& Segment::operator[](bool v) const {
+    if (v) {
         return this->v1;
     } else {
-        throw out_of_range("Segment: out of range");
+        return this->v0;
     }
 }
 
@@ -66,9 +64,8 @@ bool Segment::intersect_with_segment(const Segment &s2, Vertex &intersection) co
         intersection.x = Dx / D;
         intersection.y = Dy / D;
         intersection.z = s1.v0.z;
-
-        bool intersected = intersection.between_with_e(s1.v0, s1.v1) && intersection.between_with_e(s2.v0, s2.v1);
-        return intersected;
+        
+        return intersection.between_with_e(s1.v0, s1.v1) && intersection.between_with_e(s2.v0, s2.v1);
     }
 
 }

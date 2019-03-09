@@ -12,7 +12,7 @@ bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
 }
 
 bool Vertex::between_with_e(const Vertex &v1, const Vertex &v2) const {
-    float e = 10e-4;
+    float e = 0.00005f;
     return ((((v1.x - e <= this->x) && (this->x <= v2.x + e)) || ((v2.x - e <= this->x) && (this->x <= v1.x + e)))
             && (((v1.y - e <= this->y) && (this->y <= v2.y + e)) || ((v2.y - e <= this->y) && (this->y <= v1.y + e)))
             && (((v1.z - e <= this->z) && (this->z <= v2.z + e)) || ((v2.z - e <= this->z) && (this->z <= v1.z + e))));
