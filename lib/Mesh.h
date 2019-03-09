@@ -36,6 +36,7 @@ class Mesh {
 
     string file;
     stl2gcode_parameters parameters;
+    float x_min, x_max, y_min, y_max, z_min, z_max;
 
     vector<Triangle> triangles;
     vector<vector<Segment>> segments;
@@ -43,25 +44,26 @@ class Mesh {
     vector<vector<Segment>> infill; // заполнение (внутреннее + основания)
     vector<int> planes;
 
-public:
-    explicit Mesh(const string& file, const stl2gcode_parameters& parameters);
-
     void stl_binary();
     void stl_ascii();
     bool is_ascii();
-    void debug_file();
-
-    void stl2gcode();
 
     void slicing(const float& z_min, const float& z_max, const float& dz);
     void contour_construction(const vector<Segment>& segments, vector<Contour>& contours);
     void filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane);
-
     void gcode(const string& path);
 
-    vector<Contour> contour_construction2(const vector<Segment>& segments, const float& x_min, const float& x_max, const float& y_min, const float& y_max);
+    pair<unsigned int, unsigned int> index(const float& x, const float& y, const float& size);
+
+    void contour_construction2(const vector<Segment>& segments, vector<Contour>& contours);
     vector<Contour> plane_construction(const vector<Triangle>& triangles);
 
+public:
+    explicit Mesh(const string& file, const stl2gcode_parameters& parameters);
+
+    void stl2gcode();
+
+    void debug_file();
 };
 
 #endif

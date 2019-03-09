@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <iostream>
 #include <cfloat>
 #include <cmath>
@@ -8,6 +9,16 @@ using namespace std;
 
 
 Segment::Segment(Vertex v0, Vertex v1) : v0(v0), v1(v1) {}
+
+Vertex& Segment::operator[](int i) {
+    if (i == 0) {
+        return this->v0;
+    } else if (i == 1) {
+        return this->v1;
+    } else {
+        throw out_of_range("Segment: out of range");
+    }
+}
 
 Vertex Segment::intersect_with_plane(const float &z) const {
     Vertex p0 = v0;

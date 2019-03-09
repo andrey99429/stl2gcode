@@ -8,9 +8,13 @@ int main() {
 
     string path = "../models/";
     vector<string> models = {"pyramid.stl",
-                             "3D_test.stl"};
+                             "3D_test.stl",
+                             "plate.stl"};
 
-    Mesh mesh(path + models[1], parameters);
+    parameters.nozzle_diameter = 0.4f;
+    parameters.thread_thickness = 2.85f;
+
+    Mesh mesh(path + models[2], parameters);
     mesh.stl2gcode();
     mesh.debug_file();
 

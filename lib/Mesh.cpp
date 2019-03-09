@@ -124,12 +124,12 @@ void Mesh::stl2gcode() {
 
     cout << "triangles: " << triangles.size() << endl;
     // опредееление габоритов модели
-    float x_min = triangles.front().x_min();
-    float x_max = triangles.front().x_max();
-    float y_min = triangles.front().y_min();
-    float y_max = triangles.front().y_max();
-    float z_min = triangles.front().z_min();
-    float z_max = triangles.front().z_max();
+    x_min = triangles.front().x_min();
+    x_max = triangles.front().x_max();
+    y_min = triangles.front().y_min();
+    y_max = triangles.front().y_max();
+    z_min = triangles.front().z_min();
+    z_max = triangles.front().z_max();
 
     for (auto& triangle : triangles) {
         if (x_min > triangle.x_min()) {
@@ -334,13 +334,13 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
 
     vector<Segment> infill_lines;
     if (!is_plane || level % 2 == 0) {
-        for (float y = y_min - 0.5 * dt; y < y_max; y += dt) { // ↘ low
+        for (float y = y_min; y < y_max; y += dt) { // ↘ low
             float b = y - x_min;
             float x = y_max - b;
             infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
         }
 
-        for (float x = x_min + 0.5 * dt; x < x_max; x += dt) { // ↘ up
+        for (float x = x_min; x < x_max; x += dt) { // ↘ up
             float b = y_min - x;
             float y = x_max + b;
             infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
@@ -348,13 +348,13 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
     }
 
     if (!is_plane || level % 2 == 1) {
-        for (float x = x_min - 0.5 * dt; x < x_max; x += dt) { // ↗ low
+        for (float x = x_min; x < x_max; x += dt) { // ↗ low
             float b = y_max + x;
             float y = b - x_max;
             infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
         }
 
-        for (float y = y_min + 0.5 * dt; y < y_max; y += dt) { // ↗ up
+        for (float y = y_min; y < y_max; y += dt) { // ↗ up
             float b = y + x_min;
             float x = b - y_min;
             infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
@@ -376,6 +376,14 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
         sort(intersections.begin(), intersections.end(), [] (const Vertex& v1, const Vertex& v2) -> bool {
             return v1.y < v2.y;
         });
+
+        if (intersections.size() > 1 && intersections[0] == intersections[1]) {
+            intersections.erase(intersections.begin());
+        }
+        if (intersections.size() > 1 && intersections[intersections.size() - 2] == intersections[intersections.size() - 1]) {
+            intersections.pop_back();
+        }
+
         //intersections.erase(unique(intersections.begin(), intersections.end()), intersections.end());
 
         // соединение точек в отрезки
@@ -396,9 +404,10 @@ void Mesh::gcode(const string& path) {
 
     ofstream out(path);
     out.precision(6);
+
     out << "G21" << endl; // metric values
     out << "G90" << endl; // absolute coordinates
-    out << "M82" << endl; // absolute extrusion mode
+    out << "M82" << endl; // absolute extrusion mode ? M83
     out << "G28 X0 Y0 Z0" << endl; // initial position
     out << "G0 Z100" << endl; // опустить стол перед нагревом
     out << "M140 S" << parameters.table_temperature << endl; // turning on the table heating
@@ -417,14 +426,14 @@ void Mesh::gcode(const string& path) {
             for (auto& contour : shells[l]) {
                 out << "G0 X" << contour.front().x << " Y" << contour.front().y << " F" << parameters.moving_speed << endl;
                 for (int i = 1; i < contour.size(); ++i) {
-                    extruded += pow(parameters.nozzle_diameter / parameters.thread_thickness, 2) * contour[i].distance(contour[i-1]);
+                    extruded += parameters.layer_height * parameters.nozzle_diameter * contour[i].distance(contour[i-1]) / (M_PI * pow(parameters.thread_thickness, 2));
                     printing_time += contour[i].distance(contour[i-1]) / parameters.printing_speed;
                     out << "G1 X" << contour[i].x << " Y" << contour[i].y << " E" << extruded << " F" << parameters.printing_speed << endl;
                 }
             }
             out << ";INFILL" << endl;
             for (auto& segment : infill[l]) {
-                extruded += pow(parameters.nozzle_diameter / parameters.thread_thickness, 2) * segment.v1.distance(segment.v0);
+                extruded += parameters.layer_height * parameters.nozzle_diameter * segment.v1.distance(segment.v0) / (M_PI * pow(parameters.thread_thickness, 2));
                 printing_time += segment.v1.distance(segment.v0) / (parameters.filling_speed + parameters.moving_speed);
                 out << "G0 X" << segment.v0.x << " Y" << segment.v0.y << " F" << parameters.moving_speed << endl;
                 out << "G1 X" << segment.v1.x << " Y" << segment.v1.y << " E" << extruded << " F" << parameters.filling_speed << endl;
@@ -436,9 +445,40 @@ void Mesh::gcode(const string& path) {
     out << "M140 S0" << endl; // turning off the table heating
     out << "G0 X0 Y0 Z" << parameters.printer_height << endl;
     out << "M18" << endl; // выключение питания двигателя
+
     out.close();
 
     cout << "(printing time: " << (int) printing_time / 3600 << "h " << (int) printing_time % 3600 << "m)";
+}
+
+pair<unsigned int, unsigned int> Mesh::index(const float& x, const float& y, const float& size) {
+    auto index_x = static_cast<unsigned int>(floorf((x - x_min) / size));
+    if (x == x_max) index_x -= 1;
+    auto index_y = static_cast<unsigned int>(floorf((y - y_min) / size));
+    if (y == y_max) index_y -= 1;
+    return make_pair(index_x, index_y);
+}
+
+void Mesh::contour_construction2(const vector<Segment>& _segments, vector<Contour>& contours) {
+    typedef vector<Segment>::const_iterator Segment_;
+    typedef pair<unsigned short, Segment_> Vertex_;
+
+    float size = 0.05f;
+    int nx = static_cast<int>(ceilf((x_max - x_min) / size));
+    int ny = static_cast<int>(ceilf((y_max - y_min) / size));
+
+    map<pair<unsigned int, unsigned int>, vector<Vertex_>> index_list;
+
+    vector<Segment_> segments;
+    for (auto segment = _segments.begin(); segment != _segments.end(); ++segment) {
+        segments.push_back(segment);
+        auto idx_v0 = index(segment->v0.x, segment->v0.y, size);
+        auto idx_v1 = index(segment->v1.x, segment->v1.y, size);
+
+        index_list[idx_v0].push_back(make_pair(0, segment));
+        index_list[idx_v1].push_back(make_pair(1, segment));
+    }
+    //vector<Contour> contours;
 }
 
 vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {
@@ -472,32 +512,5 @@ vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {
         cout << contour << endl;
     }
     cout << endl;
-    return contours;
-}
-
-pair<unsigned int, unsigned int> index(const float& x, const float& y, const float& x_min, const float& x_max, const float& y_min, const float& y_max, const float& size, const float& nx) {
-    auto index_x = static_cast<unsigned int>(floorf((x - x_min) / size));
-    if (x == x_max) index_x -= 1;
-    auto index_y = static_cast<unsigned int>(floorf((y - y_min) / size));
-    if (y == y_max) index_y -= 1;
-    return make_pair(index_x, index_y);
-}
-
-vector<Contour> Mesh::contour_construction2(const vector<Segment>& _segments, const float& x_min, const float& x_max, const float& y_min, const float& y_max) {
-    typedef vector<Segment>::const_iterator Segment_;
-
-    float size = 0.05f;
-    int nx = static_cast<int>(ceilf((x_max - x_min) / size));
-    int ny = static_cast<int>(ceilf((y_max - y_min) / size));
-
-    map<unsigned long long, vector<vector<Segment_>::iterator>> index_list;
-
-    vector<Segment_> segments;
-    for (auto i = _segments.begin(); i != _segments.end(); ++i) {
-        segments.push_back(i);
-        //index_list[index()].push_back();
-    }
-    vector<Contour> contours;
-
     return contours;
 }
