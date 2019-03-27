@@ -33,8 +33,8 @@ float Triangle::z_max() const {
     return max(v1.z, max(v2.z, v3.z));
 }
 
-bool Triangle::belong_to_plane(float z) const {
-    return (z == v1.z) && (z == v2.z) && (z == v3.z);
+bool Triangle::belong_to_plane_z() const {
+    return (v1.z == v2.z) && (v2.z == v3.z);
 }
 
 Triangle& Triangle::operator+=(Vertex shift) {

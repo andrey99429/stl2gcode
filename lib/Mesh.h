@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 #include "Triangle.h"
 #include "Segment.h"
@@ -11,27 +12,23 @@
 
 using namespace std;
 
-/// stl2gcode_parameters - поиск сечений
-/// \param z_min - мин z
-/// \param z_max - мак z
-/// \param dz - шаг
-struct stl2gcode_parameters {
-    float layer_height = 0.2f;
-    float nozzle_diameter = 0.25f;
-    float thread_thickness = 1.75f;
-    float top_bottom_thickness = 0.5f;
-    float shell_thickness = 1.0f; // !!!
-    float filling_density = 0.15; // %
-    int nozzle_temperature = 205;
-    int table_temperature = 55;
-    int printing_speed = 35;
-    int filling_speed = 40;
-    int moving_speed = 90;
-    int printing_acceleration = 1000;
 
-    int printer_width = 215;
-    int printer_depth = 215;
-    int printer_height = 300;
+struct stl2gcode_parameters {
+    float layer_height = 0.2f; //!< Высота слоя (мм).
+    float nozzle_diameter = 0.25f; //!< Диаметр экструдера (мм).
+    float thread_thickness = 1.75f; //!< Диаметр пластика (мм).
+    float top_bottom_thickness = 0.4f; //!< Высота ? (мм).
+    float shell_thickness = 1.0f; //!< Толщена стенок (мм). Не будет реализовано в данной версии.
+    float filling_density = 0.15; //!< Плотность заполнения (%).
+    int nozzle_temperature = 205; //!< Темпиратура экструдера (С).
+    int table_temperature = 55; //!< Темпиратура стола (С).
+    int printing_speed = 35; //!< Скорость печати (мм/с).
+    int filling_speed = 40; //!< Скорость заполнения (мм/с).
+    int moving_speed = 90; //!< Скорость перемещения (мм/с).
+
+    int printer_width = 215; //!< Ширина принтера (мм).
+    int printer_depth = 215; //!< Длина принтера (мм).
+    int printer_height = 300; //!< Высота принтера (мм).
 };
 
 
@@ -47,7 +44,7 @@ class Mesh {
     vector<vector<Segment>> segments;
     vector<vector<Contour>> shells; // стенки
     vector<vector<Segment>> infill; // заполнение (внутреннее + основания)
-    vector<int> planes;
+    set<int> planes;
 
     void stl_binary();
     void stl_ascii();

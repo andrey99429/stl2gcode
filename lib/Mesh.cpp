@@ -177,13 +177,16 @@ void Mesh::stl2gcode() {
     triangles.clear();
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
+    while (segments[segments.size() - 1].empty()) {
+        segments.pop_back();
+        shells.pop_back();
+    }
+
     // объединение отрезков в контуры
     cout << "contour_construction"; start = system_clock::now();
 
     for (int i = 0; i < segments.size(); ++i) {
-        if (!segments[i].empty()) {
-            contour_construction(segments[i], shells[i]);
-        }
+        contour_construction(segments[i], shells[i]);
     }
     segments.clear();
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
@@ -191,19 +194,23 @@ void Mesh::stl2gcode() {
     // заполнение модели
     cout << "filling"; start = system_clock::now();
 
-    // TODO: FIX PLANES
-    int plane_levels_count = static_cast<int>(round(parameters.top_bottom_thickness / parameters.layer_height));
+    int plane_levels_count = static_cast<int>(floorf(parameters.top_bottom_thickness / parameters.layer_height));
     for (int i = 0; i < shells.size(); ++i) {
-        if (!shells[i].empty()) {
-            filling(shells[i], infill[i], i, i < 2);
+        bool is_plane;
+        if (i < plane_levels_count || planes.count(i) == 1) {
+            is_plane = true;
+        } else {
+            auto plane = planes.lower_bound(i);
+            is_plane = *plane - i < plane_levels_count;
         }
+        filling(shells[i], infill[i], i, is_plane);
     }
 
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
     // синтез g-code
     cout << "gcode"; start = system_clock::now();
-    //gcode("../files/model.gcode");
+    gcode("../files/model.gcode");
 
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 }
@@ -233,8 +240,8 @@ void Mesh::slicing(const float& dz) {
         });
         current.insert(current.end(), levels[i].begin(), levels[i].end());
         for (auto& t : current) {
-            if (t->belong_to_plane(plane_z)) {
-                planes.push_back(i);
+            if (t->belong_to_plane_z() && plane_z - dz < t->v1.z && t->v1.z <= plane_z + dz) {
+                planes.insert(i);
             } else {
                 auto points = t->intersect(plane_z);
                 if (points.size() == 2) {
@@ -326,10 +333,13 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
         }
     }
 
-    float max_diameter = min(x_max - x_min, y_max - y_min) / 4;
-    float dt = (parameters.nozzle_diameter - max_diameter) * parameters.filling_density + max_diameter;
+    float dt = max(x_max - x_min, y_max - y_min);
     if (is_plane) {
         dt = parameters.nozzle_diameter;
+    } else if (parameters.filling_density != 0.0f) {
+        float filling_square = parameters.filling_density * (x_max - x_min) * (y_max - y_min);
+        float n = filling_square / (2 * parameters.nozzle_diameter * hypot(x_max - x_min, y_max - y_min));
+        dt /= n;
     }
 
     vector<Segment> infill_lines;
@@ -377,15 +387,18 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
             return v1.y < v2.y;
         });
         intersections.erase(unique(intersections.begin(), intersections.end(), [] (const Vertex& v1, const Vertex& v2) -> bool {
-            return v1.distance(v2) <= 5 * near_point;
+            return v1.distance(v2) <= 3 * near_point;
         }), intersections.end());
 
         // соединение точек в отрезки
         if (intersections.size() > 1) {
+            // TODO: укорачивать отрезки на nozzle_diameter
+            // TODO: чередавать заполнение отрезков (начало-конец, конец-начало)
             for (int i = 0; i < intersections.size() - 1; i += 2) {
-                if (intersections[i] != intersections[i + 1]) {
-                    fillings.emplace_back(intersections[i], intersections[i + 1]);
-                }
+                Segment segment(intersections[i], intersections[i + 1]);
+                // делать, если длина ?меньше nozzle_diameter
+                segment.shorten_by(parameters.nozzle_diameter);
+                fillings.push_back(segment);
             }
         }
     }
@@ -399,18 +412,20 @@ void Mesh::gcode(const string& path) {
     ofstream out(path);
     out.precision(6);
 
-    /*out << "G21" << endl; // metric values
+    out << "G21" << endl; // metric values
     out << "G90" << endl; // absolute coordinates
-    out << "M82" << endl; // absolute extrusion mode ? M83
+    out << "M82" << endl; // absolute extrusion mode
     out << "G28 X0 Y0 Z0" << endl; // initial position
-    out << "G0 Z100" << endl; // опустить стол перед нагревом
+    out << "G0 Z100" << endl; // lowering table before heating
     out << "M140 S" << parameters.table_temperature << endl; // turning on the table heating
-    out << "M190" << endl;
+    out << "M190" << endl; // waiting for table temperature
     out << "M104 S" << parameters.nozzle_temperature << endl; // turning on the extruder heating
-    out << "M109" << endl;
+    out << "M109" << endl; // waiting for extruder temperature
     out << "G0 Z0" << endl; // initial position
-    out << "G92 E0" << endl; // clears the amount of extruded plastic*/
+    out << "G92 E0" << endl; // clears the amount of extruded plastic
 
+    // TODO: если отрезок малеленький, уменьшить скорость
+    // TODO: вынести 6.5 в отдельнуб переменную
     float extruded = 0.0f;
     for (int l = 0; l < shells.size(); ++l) {
         out << ";LAYER:" << l << endl;
@@ -438,10 +453,10 @@ void Mesh::gcode(const string& path) {
         }
     }
 
-    /*out << "M104 S0" << endl; // turning off the extruder heating
+    out << "M104 S0" << endl; // turning off the extruder heating
     out << "M140 S0" << endl; // turning off the table heating
-    out << "G0 X0 Y0 Z" << parameters.printer_height << endl;
-    out << "M18" << endl; // выключение питания двигателя */
+    out << "G0 X0 Y0 Z" << parameters.printer_height << endl; // lowering table
+    out << "M18" << endl; // engine power off
 
     out.close();
 }

@@ -20,7 +20,7 @@ public:
 
     Triangle& operator+=(Vertex shift);
 
-    bool belong_to_plane(float z) const ;
+    bool belong_to_plane_z() const ;
     std::vector<Vertex> intersect(float z) const ;
     friend std::ostream& operator << (std::ostream& stream, const Triangle& t);
 };

@@ -12,9 +12,26 @@ Segment::Segment(Vertex v0, Vertex v1) : v0(v0), v1(v1) {}
 
 const Vertex& Segment::operator[](bool v) const {
     if (v) {
-        return this->v1;
+        return v1;
     } else {
-        return this->v0;
+        return v0;
+    }
+}
+
+void Segment::shorten_by(const float &by) {
+    if (v0.x < v1.x) {
+        v0.x += by;
+        v1.x -= by;
+    } else {
+        v0.x -= by;
+        v1.x += by;
+    }
+    if (v0.y < v1.y) {
+        v0.y += by;
+        v1.y -= by;
+    } else {
+        v0.y -= by;
+        v1.y += by;
     }
 }
 

@@ -14,6 +14,7 @@ public:
 
     const Vertex& operator[](bool v) const;
 
+    void shorten_by(const float& by);
     Vertex intersect_with_plane(const float &z) const ;
     float distance(const Vertex& v3) const ;
     bool intersect_with_segment(const Segment &s2, Vertex &intersection) const ;
