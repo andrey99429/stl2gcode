@@ -17,9 +17,9 @@ def svg(shells, infill):
         shell = shells[i]
         del shell[2::3]
         shell = [(shell[j], shell[j+1]) for j in range(0, len(shell), 2)]
-        code = '<polyline points="{}" stroke="{}" stroke-width="0.05" fill="none"/>'.format(' '.join([str(shell[j][0])+','+str(shell[j][1]) for j in range(len(shell))]), color)
+        code = '<polyline points="{}" stroke="{}" stroke-width="0.75" fill="none"/>'.format(' '.join([str(shell[j][0])+','+str(shell[j][1]) for j in range(len(shell))]), color)
         for point in shell:
-            code += '<circle cx="{}" cy="{}" fill="orange" r="0.05" stroke="black" stroke-width="0.02"/>'.format(point[0], point[1])
+            code += '<circle cx="{}" cy="{}" fill="orange" r="0.75" stroke="black" stroke-width="0.25"/>'.format(point[0], point[1])
         code += '\n'
         if curr_z not in svgs:
             svgs[curr_z] = ''

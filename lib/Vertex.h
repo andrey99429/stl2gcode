@@ -27,4 +27,6 @@ public:
     friend std::ostream& operator << (std::ostream& stream, const Vertex& v);
 };
 
+float hypot(float x, float y, float z);
+
 #endif

@@ -3,6 +3,10 @@
 
 using namespace std;
 
+float hypot(float x, float y, float z) {
+    return sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
+}
+
 Vertex::Vertex(float x, float y, float z) : x(x), y(y), z(z) {}
 
 bool Vertex::between(const Vertex& v1, const Vertex& v2) const {

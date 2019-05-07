@@ -7,15 +7,15 @@ int main() {
     stl2gcode_parameters parameters{};
 
     string path = "../models/";
-    vector<string> models = {"pyramid.stl",
+    vector<string> models = {"test_model.stl",
                              "3D_test.stl",
-                             "plate.stl",
-                             "hole.stl"};
+                             "pyramid.stl"
+                             };
 
     parameters.nozzle_diameter = 0.4f;
     parameters.thread_thickness = 2.85f;
 
-    Mesh mesh(path + models[1], parameters);
+    Mesh mesh(path + models[0], parameters);
     mesh.stl2gcode();
     mesh.debug_file();
 
