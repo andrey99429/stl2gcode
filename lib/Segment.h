@@ -12,8 +12,9 @@ public:
 
     explicit Segment(Vertex v0 = Vertex(), Vertex v1 = Vertex());
 
-    const Vertex& operator[](bool v) const;
+    const Vertex& operator[](bool v) const ;
 
+    float length() const ;
     void shorten_by(const float& by);
     Vertex intersect_with_plane(const float &z) const ;
     float distance(const Vertex& v3) const ;

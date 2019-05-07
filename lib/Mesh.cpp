@@ -392,13 +392,14 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
 
         // соединение точек в отрезки
         if (intersections.size() > 1) {
-            // TODO: укорачивать отрезки на nozzle_diameter
             // TODO: чередавать заполнение отрезков (начало-конец, конец-начало)
             for (int i = 0; i < intersections.size() - 1; i += 2) {
                 Segment segment(intersections[i], intersections[i + 1]);
-                // делать, если длина ?меньше nozzle_diameter
-                segment.shorten_by(parameters.nozzle_diameter);
-                fillings.push_back(segment);
+                // укорачивать отрезки на nozzle_diameter
+                if (segment.length() >= 3 * parameters.nozzle_diameter) {
+                    segment.shorten_by(parameters.nozzle_diameter);
+                    fillings.push_back(segment);
+                }
             }
         }
     }
@@ -425,16 +426,16 @@ void Mesh::gcode(const string& path) {
     out << "G92 E0" << endl; // clears the amount of extruded plastic
 
     // TODO: если отрезок малеленький, уменьшить скорость
-    // TODO: вынести 6.5 в отдельнуб переменную
+    const float retraction = 6.5f;
     float extruded = 0.0f;
     for (int l = 0; l < shells.size(); ++l) {
         out << ";LAYER:" << l << endl;
         if (!shells[l].empty()) {
-            out << "G1 E" << extruded - 6.5 << endl;
+            out << "G1 E" << extruded - retraction << endl;
             out << "G0 Z" << shells[l].front().front().z << " F" << parameters.moving_speed << endl;
             out << "G1 E" << extruded << endl;
             for (auto& contour : shells[l]) {
-                out << "G1 E" << extruded - 6.5 << endl;
+                out << "G1 E" << extruded - retraction << endl;
                 out << "G0 X" << contour.front().x << " Y" << contour.front().y << " F" << parameters.moving_speed << endl;
                 out << "G1 E" << extruded << endl;
                 for (int i = 1; i < contour.size(); ++i) {
@@ -444,7 +445,7 @@ void Mesh::gcode(const string& path) {
             }
             out << ";INFILL" << endl;
             for (auto& segment : infill[l]) {
-                out << "G1 E" << extruded - 6.5 << endl;
+                out << "G1 E" << extruded - retraction << endl;
                 out << "G0 X" << segment.v0.x << " Y" << segment.v0.y << " F" << parameters.moving_speed << endl;
                 out << "G1 E" << extruded << endl;
                 extruded += 4 * parameters.layer_height * parameters.nozzle_diameter * segment.v1.distance(segment.v0) / (M_PI * pow(parameters.thread_thickness, 2));

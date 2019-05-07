@@ -18,6 +18,10 @@ const Vertex& Segment::operator[](bool v) const {
     }
 }
 
+float Segment::length() const {
+    return v0.distance(v1);
+}
+
 void Segment::shorten_by(const float &by) {
     if (v0.x < v1.x) {
         v0.x += by;
