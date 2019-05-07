@@ -3,21 +3,21 @@ project(stl2gcode)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include_directories(lib/)
+include_directories(stl2gcode/)
 
 add_executable(stl2gcode
         main.cpp
 
-        lib/stl2gcode.cpp
-        lib/stl2gcode.h
-        lib/Vertex.cpp
-        lib/Vertex.h
-        lib/Triangle.cpp
-        lib/Triangle.h
-        lib/Segment.cpp
-        lib/Segment.h
-        lib/Contour.cpp
-        lib/Contour.h
-        lib/extra.h
-        lib/extra.cpp
-        lib/stl2gcode_parameters.h)
+        stl2gcode/stl2gcode.cpp
+        stl2gcode/stl2gcode.h
+        stl2gcode/Vertex.cpp
+        stl2gcode/Vertex.h
+        stl2gcode/Triangle.cpp
+        stl2gcode/Triangle.h
+        stl2gcode/Segment.cpp
+        stl2gcode/Segment.h
+        stl2gcode/Contour.cpp
+        stl2gcode/Contour.h
+        stl2gcode/extra.h
+        stl2gcode/extra.cpp
+        stl2gcode/stl2gcode_parameters.h)
