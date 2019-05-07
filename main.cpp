@@ -1,5 +1,5 @@
 #include <iostream>
-#include "lib.h"
+#include "stl2gcode.h"
 
 using namespace std;
 
@@ -15,8 +15,8 @@ int main() {
     parameters.nozzle_diameter = 0.4f;
     parameters.thread_thickness = 2.85f;
 
-    Mesh mesh(path + models[0], parameters);
-    mesh.stl2gcode();
+    stl2gcode mesh(path + models[0], parameters);
+    mesh.convert();
     mesh.debug_file();
 
     cout << "python"; auto start = chrono::system_clock::now();

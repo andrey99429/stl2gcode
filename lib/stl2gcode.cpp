@@ -5,17 +5,17 @@
 #include <cmath>
 #include <list>
 
-#include "Mesh.h"
+#include "stl2gcode.h"
 #include "extra.h"
 
 using namespace chrono;
 
 
-const float Mesh::near_point = 0.00002f;
-const float Mesh::near_distance = 0.03f;
+const float stl2gcode::near_point = 0.00002f;
+const float stl2gcode::near_distance = 0.03f;
 
 
-Mesh::Mesh(const string &file, const stl2gcode_parameters& parameters) {
+stl2gcode::stl2gcode(const string &file, const stl2gcode_parameters& parameters) {
     this->file = file;
     this->parameters = parameters;
     fstream f(file);
@@ -30,7 +30,7 @@ Mesh::Mesh(const string &file, const stl2gcode_parameters& parameters) {
     }
 }
 
-void Mesh::stl_binary() {
+void stl2gcode::stl_binary() {
     struct Header {
         char info[80];
         unsigned int number;
@@ -56,7 +56,7 @@ void Mesh::stl_binary() {
     f.close();
 }
 
-void Mesh::stl_ascii() {
+void stl2gcode::stl_ascii() {
     ifstream f(file);
     string line;
 
@@ -95,7 +95,7 @@ void Mesh::stl_ascii() {
     f.close();
 }
 
-bool Mesh::is_ascii() {
+bool stl2gcode::is_ascii() {
     ifstream f(file, ios::binary);
     char str[6];
     f.get(str, 6);
@@ -103,7 +103,7 @@ bool Mesh::is_ascii() {
     return string(str) == "solid";
 }
 
-void Mesh::debug_file() {
+void stl2gcode::debug_file() {
     ofstream out("../files/model.txt");
     for (auto& vector : shells) {
         for (auto& contour : vector) {
@@ -119,7 +119,7 @@ void Mesh::debug_file() {
     out.close();
 }
 
-void Mesh::stl2gcode() {
+void stl2gcode::convert() {
     time_point<system_clock> start, end;
 
     cout << "triangles: " << triangles.size() << endl;
@@ -215,7 +215,7 @@ void Mesh::stl2gcode() {
     end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 }
 
-void Mesh::slicing(const float& dz) {
+void stl2gcode::slicing(const float& dz) {
     auto p_size = static_cast<unsigned int>(ceilf((z_max - z_min) / dz) + 1);
     cout << "(dz: " << dz << " p_size: " << p_size << ")";
 
@@ -258,7 +258,7 @@ void Mesh::slicing(const float& dz) {
     infill.resize(p_size);
 }
 
-void Mesh::contour_construction(const vector<Segment>& _segments, vector<Contour>& contours) {
+void stl2gcode::contour_construction(const vector<Segment>& _segments, vector<Contour>& contours) {
     vector<Segment> segments(_segments.begin(), _segments.end());
 
     while (!segments.empty()) {
@@ -311,7 +311,7 @@ void Mesh::contour_construction(const vector<Segment>& _segments, vector<Contour
     }
 }
 
-void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane) {
+void stl2gcode::filling(const vector<Contour>& contours, vector<Segment>& fillings, const int& level, const bool& is_plane) {
     float x_min = contours.front().front().x;
     float x_max = contours.front().front().x;
     float y_min = contours.front().front().y;
@@ -405,7 +405,7 @@ void Mesh::filling(const vector<Contour>& contours, vector<Segment>& fillings, c
     }
 }
 
-void Mesh::gcode(const string& path) {
+void stl2gcode::gcode(const string& path) {
     parameters.moving_speed = 60 * parameters.moving_speed;
     parameters.filling_speed = 60 * parameters.filling_speed;
     parameters.printing_speed = 60 * parameters.printing_speed;
@@ -462,123 +462,3 @@ void Mesh::gcode(const string& path) {
     out.close();
 }
 
-pair<unsigned int, unsigned int> Mesh::index(const float& x, const float& y, const float& size) {
-    auto index_x = static_cast<unsigned int>(floorf((x - x_min) / size));
-    if (x == x_max) index_x -= 1;
-    auto index_y = static_cast<unsigned int>(floorf((y - y_min) / size));
-    if (y == y_max) index_y -= 1;
-    return make_pair(index_x, index_y);
-}
-
-void Mesh::contour_construction2(const vector<Segment>& _segments, vector<Contour>& contours) {
-    typedef vector<Segment>::const_iterator Segment_;
-    typedef pair<bool, Segment_> Vertex_;
-
-    float size = 0.05f;
-    int nx = static_cast<int>(ceilf((x_max - x_min) / size));
-    int ny = static_cast<int>(ceilf((y_max - y_min) / size));
-    cout << nx << " " << ny << endl;
-
-    map<pair<unsigned int, unsigned int>, vector<Vertex_>> index_list;
-
-    vector<Segment_> segments;
-    for (auto segment = _segments.begin(); segment != _segments.end(); ++segment) {
-        segments.push_back(segment);
-
-        index_list[index(segment->v0.x, segment->v0.y, size)].push_back(make_pair(false, segment));
-        index_list[index(segment->v1.x, segment->v1.y, size)].push_back(make_pair(true, segment));
-    }
-
-    /*for (auto& _pair : index_list) {
-        cout << "("<< _pair.first.first << ", " << _pair.first.second << ") ";
-        cout << "[";
-        cout << _pair.second.size();
-        cout << "]" << endl;
-    }*/
-
-    while (!segments.empty()) {
-        auto& segment = segments.back();
-        segments.pop_back();
-        {
-            const Vertex &v0 = segment->v0;
-            const Vertex &v1 = segment->v1;
-
-            auto &list_v0 = index_list[index(v0.x, v0.y, size)];
-            list_v0.erase(find_if(list_v0.begin(), list_v0.end(), [&segment] (const Vertex_ &v1) -> bool {
-                return v1.first == false && *v1.second == *segment;
-            }));
-            auto &list_v1 = index_list[index(v1.x, v1.y, size)];
-            list_v1.erase(find_if(list_v1.begin(), list_v1.end(), [&segment] (const Vertex_ &v1) -> bool {
-                return v1.first == true && *v1.second == *segment;
-            }));
-        }
-        Contour contour;
-        contour.push_back(segment->v0);
-        contour.push_back(segment->v1);
-
-        while (contour.back().distance(contour.front()) > near_point && !segments.empty()) {
-            auto& last = contour.back();
-            // поиск нужного отрезка с нужной точкой
-            auto possible_near2 = index_list.find(index(last.x, last.y, size));
-            auto& possible_near = possible_near2->second;
-            auto segment_near = min_element(possible_near.begin(), possible_near.end(), [&last] (const Vertex_& v1, const Vertex_ v2) -> bool {
-                return last.distance((*v1.second)[v1.first]) < last.distance((*v2.second)[v2.first]);
-            });
-
-            if (segment_near != possible_near.end() && last.distance((*segment_near->second)[segment_near->first]) <= near_point) {
-                // все хорошо, добавить точку
-                contour.push_back((*segment_near->second)[!segment_near->first]);
-                possible_near.erase(segment_near);
-                //segments.erase(segment_near->second);
-            } else {
-                // нужно поискать еще
-            }
-            /*
-            if (segment != segments.end() && min(last.distance(segment->v0), last.distance(segment->v1)) <= near_point) {
-                if (last.distance(segment->v0) < last.distance(segment->v1)) {
-                    contour.push_back(segment->v1);
-                } else {
-                    contour.push_back(segment->v0);
-                }
-                segments.erase(segment);
-            } else {
-                break;
-            }
-             */
-        }
-    }
-}
-
-vector<Contour> Mesh::plane_construction(const vector<Triangle>& triangles) {
-    vector<Segment> segments;
-    for (auto& triangle : triangles) {
-        segments.emplace_back(triangle.v1, triangle.v2);
-        segments.emplace_back(triangle.v2, triangle.v3);
-        segments.emplace_back(triangle.v3, triangle.v1);
-    }
-    cout << segments.size() << endl;
-    /*for (auto& segment : segments) {
-        cout << segment << endl;
-    }*/
-    for (auto it = segments.begin(); it < segments.end(); ++it) {
-        auto repet = find_if(it+1, segments.end(), [&it] (const Segment& s) -> bool {
-            return (it->v0.distance(s.v0) <= near_distance || it->v0.distance(s.v1) <= near_distance) && (it->v1.distance(s.v0) <= near_distance || it->v1.distance(s.v1) <= near_distance);
-        });
-        if (repet != segments.end()) {
-            segments.erase(repet);
-            segments.erase(it);
-            --it;
-        }
-    }
-    cout << segments.size() << endl;
-    /*for (auto& segment : segments) {
-        cout << segment << endl;
-    }*/
-    vector<Contour> contours;
-    contour_construction(segments, contours);
-    for (auto& contour : contours) {
-        cout << contour << endl;
-    }
-    cout << endl;
-    return contours;
-}
