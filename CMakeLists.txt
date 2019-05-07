@@ -18,6 +18,5 @@ add_executable(stl2gcode
         stl2gcode/Segment.h
         stl2gcode/Contour.cpp
         stl2gcode/Contour.h
-        stl2gcode/extra.h
-        stl2gcode/extra.cpp
-        stl2gcode/stl2gcode_parameters.h)
+        stl2gcode/stl2gcode_parameters.h
+        )

@@ -9,12 +9,6 @@ float hypot(float x, float y, float z) {
 
 Vertex::Vertex(float x, float y, float z) : x(x), y(y), z(z) {}
 
-bool Vertex::between(const Vertex& v1, const Vertex& v2) const {
-    return ((((v1.x <= this->x) && (this->x <= v2.x)) || ((v2.x <= this->x) && (this->x <= v1.x)))
-            && (((v1.y <= this->y) && (this->y <= v2.y)) || ((v2.y <= this->y) && (this->y <= v1.y)))
-            && (((v1.z <= this->z) && (this->z <= v2.z)) || ((v2.z <= this->z) && (this->z <= v1.z))));
-}
-
 bool Vertex::between_with_e(const Vertex &v1, const Vertex &v2) const {
     float e = 0.00005f;
     return ((((v1.x - e <= this->x) && (this->x <= v2.x + e)) || ((v2.x - e <= this->x) && (this->x <= v1.x + e)))

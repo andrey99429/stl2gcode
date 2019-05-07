@@ -9,7 +9,6 @@ public:
     float y;
     float z;
     explicit Vertex(float x = 0.0f, float y = 0.0f, float z = 0.0f);
-    bool between(const Vertex& v1, const Vertex& v2) const ;
     bool between_with_e(const Vertex &v1, const Vertex &v2) const ;
 
     Vertex operator+(const Vertex& v) const ;

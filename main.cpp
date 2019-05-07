@@ -1,6 +1,5 @@
 #include <iostream>
 #include "stl2gcode.h"
-
 using namespace std;
 
 int main() {
@@ -16,11 +15,9 @@ int main() {
     parameters.thread_thickness = 2.85f;
 
     stl2gcode mesh(path + models[0], parameters);
-    mesh.convert();
+    mesh.convert("../files/model.gcode");
     mesh.debug_file();
 
-    cout << "python"; auto start = chrono::system_clock::now();
     system("/Users/andrey/OneDrive/Project/stl2gcode/venv/bin/python /Users/andrey/OneDrive/Project/stl2gcode/main.py");
-    auto end = chrono::system_clock::now(); cout << ": " << chrono::duration_cast<chrono::milliseconds>(end-start).count() / 1000.0;
     return 0;
 }

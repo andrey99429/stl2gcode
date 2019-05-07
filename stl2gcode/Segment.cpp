@@ -64,14 +64,13 @@ float Segment::distance(const Vertex &v3) const {
 
 bool Segment::intersect_with_segment(const Segment &s2, Vertex &intersection) const {
     const Segment& s1 = *this;
-    // ax + by = c
+
     struct Line {
         float a;
         float b;
         float c;
     };
-    // from x-x0/x1-x0=y-y0/y1-y0
-    // to ax + by = c
+
     Line l1 = {s1.v1.y - s1.v0.y, s1.v0.x - s1.v1.x, s1.v0.x * (s1.v1.y - s1.v0.y) - s1.v0.y * (s1.v1.x - s1.v0.x)};
     Line l2 = {s2.v1.y - s2.v0.y, s2.v0.x - s2.v1.x, s2.v0.x * (s2.v1.y - s2.v0.y) - s2.v0.y * (s2.v1.x - s2.v0.x)};
 

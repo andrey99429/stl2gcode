@@ -1,22 +1,18 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
-#include <chrono>
 #include <cmath>
 #include <list>
 
 #include "stl2gcode.h"
-#include "extra.h"
-
-using namespace chrono;
 
 
 const float stl2gcode::near_point = 0.00002f;
 const float stl2gcode::near_distance = 0.03f;
 
 
-stl2gcode::stl2gcode(const string &file, const stl2gcode_parameters& parameters) {
-    this->file = file;
+stl2gcode::stl2gcode(const string &path, const stl2gcode_parameters& parameters) {
+    this->file = path;
     this->parameters = parameters;
     fstream f(file);
     if (!f.is_open()) {
@@ -66,27 +62,27 @@ void stl2gcode::stl_ascii() {
             Vertex v1, v2, v3;
             f >> line;
             f >> line;
-            v1.x = str2float(line);
+            v1.x = stod(line);
             f >> line;
-            v1.y = str2float(line);
+            v1.y = stod(line);
             f >> line;
-            v1.z = str2float(line);
+            v1.z = stod(line);
 
             f >> line;
             f >> line;
-            v2.x = str2float(line);
+            v2.x = stod(line);
             f >> line;
-            v2.y = str2float(line);
+            v2.y = stod(line);
             f >> line;
-            v2.z = str2float(line);
+            v2.z = stod(line);
 
             f >> line;
             f >> line;
-            v3.x = str2float(line);
+            v3.x = stod(line);
             f >> line;
-            v3.y = str2float(line);
+            v3.y = stod(line);
             f >> line;
-            v3.z = str2float(line);
+            v3.z = stod(line);
 
             Triangle triangle(v1, v2, v3);
             triangles.push_back(triangle);
@@ -119,11 +115,7 @@ void stl2gcode::debug_file() {
     out.close();
 }
 
-void stl2gcode::convert() {
-    time_point<system_clock> start, end;
-
-    cout << "triangles: " << triangles.size() << endl;
-    // опредееление габоритов модели
+void stl2gcode::convert(const string& path) {
     x_min = triangles.front().x_min();
     x_max = triangles.front().x_max();
     y_min = triangles.front().y_min();
@@ -152,7 +144,6 @@ void stl2gcode::convert() {
         }
     }
 
-    // сдвиг модели в центр принтера
     Vertex shift;
     shift.x = parameters.printer_width / 2.0f - x_min - (x_max - x_min) / 2.0f;
     shift.y = parameters.printer_depth / 2.0f - y_min - (y_max - y_min) / 2.0f;
@@ -166,33 +157,18 @@ void stl2gcode::convert() {
     y_min += shift.y;   y_max += shift.y;
     z_min += shift.z;   z_max += shift.z;
 
-    cout << "x_min: " << x_min << " x_max: " << x_max << endl;
-    cout << "y_min: " << y_min << " y_max: " << y_max << endl;
-    cout << "z_min: " << z_min << " z_max: " << z_max << endl;
-
-    // слайсинг
-    cout << "slicing"; start = system_clock::now();
-
     slicing(parameters.layer_height);
     triangles.clear();
-    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
 
     while (segments[segments.size() - 1].empty()) {
         segments.pop_back();
         shells.pop_back();
     }
 
-    // объединение отрезков в контуры
-    cout << "contour_construction"; start = system_clock::now();
-
     for (int i = 0; i < segments.size(); ++i) {
         contour_construction(segments[i], shells[i]);
     }
     segments.clear();
-    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
-
-    // заполнение модели
-    cout << "filling"; start = system_clock::now();
 
     int plane_levels_count = static_cast<int>(floorf(parameters.top_bottom_thickness / parameters.layer_height));
     for (int i = 0; i < shells.size(); ++i) {
@@ -206,22 +182,14 @@ void stl2gcode::convert() {
         filling(shells[i], infill[i], i, is_plane);
     }
 
-    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
-
-    // синтез g-code
-    cout << "gcode"; start = system_clock::now();
-    gcode("../files/model.gcode");
-
-    end = system_clock::now(); cout << ": " << duration_cast<milliseconds>(end-start).count() / 1000.0 << endl;
+    gcode(path);
 }
 
 void stl2gcode::slicing(const float& dz) {
     auto p_size = static_cast<unsigned int>(ceilf((z_max - z_min) / dz) + 1);
-    cout << "(dz: " << dz << " p_size: " << p_size << ")";
 
-    // сортировка треугольников
     typedef vector<Triangle>::iterator Triangle_;
-    vector<vector<Triangle_>> levels; // список из треугольников по уровням
+    vector<vector<Triangle_>> levels;
     levels.resize(p_size);
 
     for (auto triangle = triangles.begin(); triangle != triangles.end(); ++triangle) {
@@ -230,7 +198,6 @@ void stl2gcode::slicing(const float& dz) {
         levels[ii].push_back(triangle);
     }
 
-    // построение сечений
     segments.resize(p_size);
     list<Triangle_> current;
     for (int i = 0; i < p_size; ++i) {
@@ -245,7 +212,6 @@ void stl2gcode::slicing(const float& dz) {
             } else {
                 auto points = t->intersect(plane_z);
                 if (points.size() == 2) {
-                    // убирает повторы отрезков, полученных на стыках треугольником с горизонтальным ребром
                     if (t->z_max() != plane_z || plane_z == z_max) {
                         segments[i].emplace_back(points[0], points[1]);
                     }
@@ -286,19 +252,19 @@ void stl2gcode::contour_construction(const vector<Segment>& _segments, vector<Co
                 break;
             }
         }
-        // что-бы контур правиильно замкнулся
+
         if (contour.back() != contour.front() && contour.back().distance(contour.front()) <= near_point) {
             contour.back() = contour.front();
         }
 
-        // проверить точки на нахождение на одной прямой
+
         for (int i = 1; i < contour.size() - 1; ++i) {
             if (contour[i - 1] != contour[i + 1] && Segment(contour[i - 1], contour[i + 1]).distance(contour[i]) <= near_distance) {
                 contour.erase(contour.begin() + i);
                 --i;
             }
         }
-        // проверить является первый или последний лишним
+
         if (contour.front() == contour.back() && contour.size() > 3) {
             if (Segment(*(contour.begin() + 1), *(contour.end() - 2)).distance(contour.front()) <= near_distance) {
                 contour.erase(contour.begin());
@@ -344,13 +310,13 @@ void stl2gcode::filling(const vector<Contour>& contours, vector<Segment>& fillin
 
     vector<Segment> infill_lines;
     if (!is_plane || level % 2 == 0) {
-        for (float y = y_min; y < y_max; y += dt) { // ↘ low
+        for (float y = y_min; y < y_max; y += dt) {
             float b = y - x_min;
             float x = y_max - b;
             infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_max, z));
         }
 
-        for (float x = x_min + dt; x < x_max; x += dt) { // ↘ up
+        for (float x = x_min + dt; x < x_max; x += dt) {
             float b = y_min - x;
             float y = x_max + b;
             infill_lines.emplace_back(Vertex(x, y_min, z), Vertex(x_max, y, z));
@@ -358,13 +324,13 @@ void stl2gcode::filling(const vector<Contour>& contours, vector<Segment>& fillin
     }
 
     if (!is_plane || level % 2 == 1) {
-        for (float x = x_min; x < x_max; x += dt) { // ↗ low
+        for (float x = x_min; x < x_max; x += dt) {
             float b = y_max + x;
             float y = b - x_max;
             infill_lines.emplace_back(Vertex(x, y_max, z), Vertex(x_max, y, z));
         }
 
-        for (float y = y_min + dt; y < y_max; y += dt) { // ↗ up
+        for (float y = y_min + dt; y < y_max; y += dt) {
             float b = y + x_min;
             float x = b - y_min;
             infill_lines.emplace_back(Vertex(x_min, y, z), Vertex(x, y_min, z));
@@ -382,20 +348,17 @@ void stl2gcode::filling(const vector<Contour>& contours, vector<Segment>& fillin
             }
         }
 
-        // обработка точек
         sort(intersections.begin(), intersections.end(), [] (const Vertex& v1, const Vertex& v2) -> bool {
             return v1.y < v2.y;
         });
+
         intersections.erase(unique(intersections.begin(), intersections.end(), [] (const Vertex& v1, const Vertex& v2) -> bool {
             return v1.distance(v2) <= 3 * near_point;
         }), intersections.end());
 
-        // соединение точек в отрезки
         if (intersections.size() > 1) {
-            // TODO: чередавать заполнение отрезков (начало-конец, конец-начало)
             for (int i = 0; i < intersections.size() - 1; i += 2) {
                 Segment segment(intersections[i], intersections[i + 1]);
-                // укорачивать отрезки на nozzle_diameter
                 if (segment.length() >= 3 * parameters.nozzle_diameter) {
                     segment.shorten_by(parameters.nozzle_diameter);
                     fillings.push_back(segment);
@@ -425,7 +388,6 @@ void stl2gcode::gcode(const string& path) {
     out << "G0 Z0" << endl; // initial position
     out << "G92 E0" << endl; // clears the amount of extruded plastic
 
-    // TODO: если отрезок малеленький, уменьшить скорость
     const float retraction = 6.5f;
     float extruded = 0.0f;
     for (int l = 0; l < shells.size(); ++l) {

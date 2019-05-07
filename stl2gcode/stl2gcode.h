@@ -37,9 +37,9 @@ class stl2gcode {
     void gcode(const string& path);
 
 public:
-    explicit stl2gcode(const string& file, const stl2gcode_parameters& parameters);
+    explicit stl2gcode(const string& path, const stl2gcode_parameters& parameters);
 
-    void convert();
+    void convert(const string& path);
 
     void debug_file();
 };
